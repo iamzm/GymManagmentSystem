@@ -142,6 +142,10 @@ If it is not set, the app logs a warning and seeds no admin. In **Development**,
 
 A single design system in `wwwroot/css/app.css` — CSS custom properties for colour, type, spacing, radius, shadow and motion, then components built on those tokens: the app shell, cards, stat tiles, data tables, status pills, avatars, forms, toasts, empty states, meters and the weekly timetable grid.
 
+- **Palette** — electric violet as the brand, volt green as the accent used sparingly for the one thing on a screen that should shout, and slate neutrals with a faint violet cast so greys sit beside the brand instead of fighting it. Volt always carries dark ink; white on volt fails contrast badly.
+- **Type** — *Sora* for headings and figures (geometric, with enough character to carry a display number) and *Plus Jakarta Sans* for body text (modern and highly legible at small sizes). Both have full system fallback stacks.
+- **Background** — a soft two-point radial wash behind the page, so large empty areas have some life without competing with the content on them.
+
 - **Three layouts** — `_Layout` (the back-office shell with a dark sidebar), `_PublicLayout` (marketing pages) and `_AuthLayout` (split-screen sign-in).
 - **Light and dark themes** — the toggle re-points the same tokens, so no component knows which theme it is in. The choice is stored per browser and applied before first paint, so there is no flash of the wrong theme.
 - **Responsive** — the sidebar collapses to an overlay under 860px, the timetable reflows from seven columns to one, and tables scroll inside their own container rather than the page.
@@ -171,6 +175,7 @@ The `AnalyticsService` computes every figure live from the database on each dash
 - **SQL Server**
 - **AutoMapper**
 - **Razor Views** with tag helpers, partial views and shared layouts
+- **Sora** + **Plus Jakarta Sans** (Google Fonts), **Bootstrap Icons** (self-hosted)
 - **Bootstrap 5** grid and dropdowns, with a custom design system on top
 
 ---

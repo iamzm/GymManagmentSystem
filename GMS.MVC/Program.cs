@@ -43,6 +43,7 @@ namespace GMS.MVC {
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
             })
             .AddEntityFrameworkStores<GymDbContext>()
+            .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>()
             .AddDefaultTokenProviders();
 
             builder.Services.ConfigureApplicationCookie(options => {

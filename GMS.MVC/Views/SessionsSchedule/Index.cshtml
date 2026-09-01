@@ -64,20 +64,17 @@
                         var slotClass = slot.IsFull && slot.Status == "Upcoming"
                             ? "slot-card--full"
                             : $"slot-card--{slot.Status.ToLowerInvariant()}";
-                        <a class="slot-card @slotClass" asp-action="Roster" asp-route-id="@slot.SessionId">
-                            <div class="slot-card__time">@slot.TimeRange</div>
-                            <div class="slot-card__title">@slot.CategoryName</div>
-                            <div class="slot-card__meta">
-                                <i class="bi bi-person"></i>@slot.TrainerName
+                        @* Only staff may open a roster, so only their cards are links. *@
+                        @if (isStaff) {
+                            <a class="slot-card @slotClass" asp-action="Roster" asp-route-id="@slot.SessionId">
+                                <partial name="_ScheduleSlot" model="@slot" />
+                            </a>
+                        }
+                        else {
+                            <div class="slot-card @slotClass">
+                                <partial name="_ScheduleSlot" model="@slot" />
                             </div>
-                            <div class="slot-card__meta mt-1">
-                                <i class="bi bi-people"></i>
-                                <span class="mono-num">@slot.BookedSlots/@slot.Capacity</span>
-                                @if (slot.IsFull) {
-                                    <span class="pill pill--danger ms-1" style="padding:0 7px">Full</span>
-                                }
-                            </div>
-                        </a>
+                        }
                     }
                 }
                 else {

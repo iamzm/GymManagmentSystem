@@ -121,7 +121,11 @@
         <div class="col-12 col-lg-6">
             <div class="row g-3">
                 <div class="col-6">
-                    <img src="~/images/about p1.jpg" class="img-fluid rounded-4 shadow-sm w-100" alt="Training at Power Fitness" />
+                    @* The plate is painted in CSS rather than baked into the file, so the image
+                       follows the brand colour instead of pinning it. *@
+                    <div class="about-plate">
+                        <img src="~/images/about-p1.png" alt="Training at Power Fitness" />
+                    </div>
                 </div>
                 <div class="col-6">
                     <img src="~/images/about p2.jpg" class="img-fluid rounded-4 shadow-sm w-100 mb-3" alt="Strength training" />

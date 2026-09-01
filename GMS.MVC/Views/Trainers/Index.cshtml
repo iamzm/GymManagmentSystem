@@ -53,7 +53,7 @@
                             <partial name="_Avatar" model="@(new AvatarModel { Name = trainer.Name, Photo = trainer.Photo, Folder = "trainers", Size = "lg" })" />
                             <div class="min-width-0 flex-grow-1">
                                 <h2 class="h5 mb-1 text-truncate">@trainer.Name</h2>
-                                <span class="pill pill--brand"><i class="bi bi-award"></i>@trainer.Specialties</span>
+                                <span class="pill pill--brand pill--multiline"><i class="bi bi-award"></i>@trainer.Specialties</span>
                             </div>
 
                             <div class="dropdown">
@@ -92,7 +92,7 @@
 
                     <div class="card-app__foot d-flex align-items-center justify-content-between">
                         <div class="fs-14 text-muted-2">
-                            <span class="mono-num fw-600">@trainer.SessionCount</span> classes ·
+                            <span class="mono-num fw-600">@trainer.SessionCount</span> @(trainer.SessionCount == 1 ? "class" : "classes") ·
                             <span class="mono-num fw-600">@trainer.UpcomingSessionCount</span> upcoming
                         </div>
                         <a class="btn-app btn-app--ghost btn-app--sm" asp-action="TrainerDetails" asp-route-id="@trainer.Id">

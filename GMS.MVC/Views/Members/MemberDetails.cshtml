@@ -38,9 +38,9 @@
 
                 @if (Model.HasActivePlan) {
                     <div class="mt-4 p-3 rounded-3 text-start" style="background:var(--brand-50)">
-                        <div class="detail-item__label" style="color:var(--brand-700)">Current plan</div>
-                        <div class="h5 mb-2" style="color:var(--brand-900)">@Model.PlanName</div>
-                        <div class="fs-14" style="color:var(--brand-800)">
+                        <div class="detail-item__label" style="color:var(--brand-ink)">Current plan</div>
+                        <div class="h5 mb-2" style="color:var(--brand-ink)">@Model.PlanName</div>
+                        <div class="fs-14" style="color:var(--brand-on-soft)">
                             <i class="bi bi-calendar-check me-1"></i>@Model.MemberShipStartDate
                             <i class="bi bi-arrow-right mx-1"></i>@Model.MemberShipEndDate
                         </div>
@@ -78,7 +78,7 @@
             </div>
             <div class="card-app__body">
                 <div class="detail-grid">
-                    <div class="detail-item">
+                    <div class="detail-item detail-item--wide">
                         <div class="detail-item__label">Email</div>
                         <div class="detail-item__value">@Model.Email</div>
                     </div>
@@ -94,7 +94,7 @@
                         <div class="detail-item__label">Date of Birth</div>
                         <div class="detail-item__value">@Model.DateOfBirth</div>
                     </div>
-                    <div class="detail-item" style="grid-column:1/-1">
+                    <div class="detail-item detail-item--wide" style="grid-column:1/-1">
                         <div class="detail-item__label">Address</div>
                         <div class="detail-item__value">@(Model.Address ?? "Not recorded")</div>
                     </div>

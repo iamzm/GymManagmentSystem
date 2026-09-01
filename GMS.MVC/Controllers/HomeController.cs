@@ -10,9 +10,6 @@ namespace GMS.MVC.Controllers {
     public class HomeController(IServiceManger serviceManger) : Controller {
 
         public async Task<IActionResult> Index() {
-            // Signed-In Staff Get The Working Dashboard Rather Than The Marketing Page.
-            if (User.Identity?.IsAuthenticated == true) return RedirectToAction("Index", "Dashboard");
-
             // The Landing Page Advertises The Real Gym: Live Counters, The Plans Actually On
             // Sale, And The Classes Genuinely Coming Up This Week.
             var schedule = await serviceManger.BookingService.GetWeeklySchedule();

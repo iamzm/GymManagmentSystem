@@ -18,6 +18,8 @@ namespace GMS.MVC.Controllers {
         #endregion
 
         #region ==== Session Roster ====
+        // The Roster Lists Other Members By Name And Email, So It Is Staff-Only.
+        [Authorize(Policy = AppPolicies.StaffOnly)]
         public async Task<IActionResult> Roster(int id) {
             var roster = await serviceManger.BookingService.GetSessionRoster(id);
             if (roster is null) {

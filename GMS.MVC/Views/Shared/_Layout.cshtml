@@ -1,10 +1,10 @@
 ﻿@using Presistence.Identity
-@using Microsoft.AspNetCore.Identity
-@inject UserManager<AppUser> UserManager
+@using System.Security.Claims
 @{
     var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
-    var appUser = await UserManager.GetUserAsync(User);
-    var displayName = appUser?.FullName ?? User.Identity?.Name ?? "Guest";
+    // The display name rides along in the auth cookie, so rendering the shell costs no query.
+    var displayName = User.FindFirstValue(AppUserClaimsPrincipalFactory.FullNameClaim)
+                      ?? User.Identity?.Name ?? "Guest";
     var role = User.IsInRole(AppRoles.Admin) ? "Administrator"
              : User.IsInRole(AppRoles.Trainer) ? "Trainer"
              : "Member";
@@ -31,7 +31,7 @@
     <link rel="shortcut icon" href="~/images/icon.svg" type="image/x-icon" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400..800&family=Rubik:wght@300..700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
