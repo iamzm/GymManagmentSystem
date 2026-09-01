@@ -35,7 +35,7 @@
                 <div class="card-app__body">
                     <div class="d-flex align-items-baseline gap-2 mb-1">
                         <span class="h3 mb-0">@current.PlanName</span>
-                        <span class="text-muted-2 mono-num">@current.PricePaid.ToString("N0") EGP</span>
+                        <span class="text-muted-2 mono-num">@Money.Format(current.PricePaid)</span>
                     </div>
                     <p class="text-muted-2 fs-14">@current.PlanDescription</p>
 
@@ -91,7 +91,7 @@
                 <div class="card-app__body">
                     <div class="d-flex align-items-baseline gap-2 mb-3">
                         <span class="h4 mb-0">@next.PlanName</span>
-                        <span class="text-muted-2 mono-num">@next.PricePaid.ToString("N0") EGP</span>
+                        <span class="text-muted-2 mono-num">@Money.Format(next.PricePaid)</span>
                     </div>
 
                     <div class="p-3 rounded-3 mb-3" style="background:var(--brand-50)">
@@ -178,14 +178,14 @@
                             </div>
 
                             <div class="pricing-card__price mb-1">
-                                @option.Price.ToString("N0") <span class="fs-6 text-muted-2">EGP</span>
+                                @Money.Amount(option.Price) <span class="fs-6 text-muted-2">@Money.Code</span>
                             </div>
                             <div class="text-muted-2 fs-14 mb-2">for @option.DurationDays days</div>
 
                             @if (!isCurrent && Model.HasActivePlan && option.PriceDifference != 0) {
                                 <div class="fs-13 mb-2 @(option.PriceDifference > 0 ? "text-brand" : "text-muted-2")">
                                     <i class="bi @(option.PriceDifference > 0 ? "bi-arrow-up-right" : "bi-arrow-down-right")"></i>
-                                    @Math.Abs(option.PriceDifference).ToString("N0") EGP @(option.PriceDifference > 0 ? "more" : "less") per term
+                                    @Money.Format(Math.Abs(option.PriceDifference)) @(option.PriceDifference > 0 ? "more" : "less") per term
                                 </div>
                             }
 

@@ -126,6 +126,8 @@ If it is not set, the app logs a warning and seeds no admin. In **Development**,
 
 **Enums** — `Gender`, `BloodType` (8 types), `Specialties` (11 specialties).
 
+**Money** — the currency is configuration, not something each view spells out. `Gym:Currency` sets the code, the numeric format, and whether the code leads or trails; views ask an injected `IMoneyFormatter` for a formatted amount. Defaults to **PKR**. Seeded plan prices live in `wwwroot/Data/plans.json`.
+
 **Phone numbers** — validated as Pakistani mobiles (`03` followed by nine digits, e.g. `03001234567`) in the DTOs. The database check constraint only requires digits, deliberately: which national numbering plan applies is a validation rule, not something to bake into the schema, or serving another country would mean a migration.
 
 ### Changing plan
@@ -236,9 +238,21 @@ The `Seed` configuration section controls startup seeding:
 | `Seed:AdminFullName` | Display name for that account. |
 | `Seed:SeedDemoData` | When `true` (Development default), seeds sample trainers, members, memberships, sessions and bookings on an empty database, so a fresh clone shows a populated dashboard instead of six zeroes. |
 | `Seed:DemoPassword` | Password for the demo member and trainer logins created alongside the sample records, so every role can be signed into. Blank means no demo logins. |
-| `Seed:ResetDemoData` | **Destructive, off by default.** Turn on once to wipe the sample people — bookings, memberships, sessions, members and trainers — so a fresh set replaces them, then turn it off. Plans, categories and login accounts are left alone. Development only. |
+| `Seed:ResetDemoData` | **Destructive, off by default.** Turn on once to wipe the seeded content — people, sessions, memberships, bookings, plans and categories — and reload it all from the seed files, then turn it off. Login accounts are left alone. Use it after changing currency or plan prices, since plans are otherwise only seeded into an empty table. Development only. |
 
-Categories and plans are always seeded from `wwwroot/Data/*.json` when their tables are empty.
+Categories and plans are seeded from `wwwroot/Data/*.json` when their tables are empty — so to change plan prices on a database that already has them, edit the JSON and run once with `Seed:ResetDemoData`.
+
+### Serving a different market
+
+Two settings and one file, no code:
+
+| What | Where |
+|---|---|
+| Currency code and formatting | `Gym:Currency` in `appsettings.json` |
+| Plan names, durations and prices | `wwwroot/Data/plans.json` |
+| Mobile number format | the `[RegularExpression]` on the phone fields in the member and trainer DTOs |
+
+The database only requires a phone to be digits — which national numbering plan applies is a validation rule, so changing country does not mean a migration.
 
 ---
 

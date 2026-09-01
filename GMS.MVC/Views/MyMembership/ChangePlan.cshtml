@@ -29,7 +29,7 @@
                             <div class="detail-item__label">Now until @(current?.EndDate.ToString("MMM dd") ?? "today")</div>
                             <div class="h5 mb-1">@(current?.PlanName ?? "No plan")</div>
                             @if (current is not null) {
-                                <div class="text-muted-2 mono-num fs-14">@current.PricePaid.ToString("N0") EGP · @current.PlanDurationDays days</div>
+                                <div class="text-muted-2 mono-num fs-14">@Money.Format(current.PricePaid) · @current.PlanDurationDays days</div>
                             }
                             else {
                                 <div class="text-muted-2 fs-14">You're not subscribed at the moment.</div>
@@ -45,7 +45,7 @@
                         <div class="detail-item h-100" style="background:var(--brand-50);border-color:var(--brand-300)">
                             <div class="detail-item__label" style="color:var(--brand-on-soft)">From @Model.EffectiveFrom.ToString("MMM dd, yyyy")</div>
                             <div class="h5 mb-1">@Model.Name</div>
-                            <div class="text-muted-2 mono-num fs-14">@Model.Price.ToString("N0") EGP · @Model.DurationDays days</div>
+                            <div class="text-muted-2 mono-num fs-14">@Money.Format(Model.Price) · @Model.DurationDays days</div>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
                     <li class="d-flex gap-3">
                         <i class="bi bi-3-circle-fill" style="color:var(--brand-600)"></i>
                         <span>
-                            You'll be charged <strong class="mono-num">@Model.Price.ToString("N0") EGP</strong> for that term.
+                            You'll be charged <strong class="mono-num">@Money.Format(Model.Price)</strong> for that term.
                             That price is locked in now, so a later price change won't affect you.
                         </span>
                     </li>

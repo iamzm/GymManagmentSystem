@@ -22,12 +22,15 @@ namespace Presistence.Data {
                 await _dbContext.Database.MigrateAsync();
             }
 
+            // The Reset Runs First So The Seeders Below See An Empty Slate And Lay Everything
+            // Down Again — Otherwise They Would Skip Tables The Reset Had Just Cleared.
+            if (_seedOptions.ResetDemoData) await ResetDemoDataAsync();
+
             await SeedCategoriesAsync();
             await SeedPlansAsync();
             await SeedRolesAsync();
             await SeedAdminAsync();
 
-            if (_seedOptions.ResetDemoData) await ResetDemoDataAsync();
             if (_seedOptions.SeedDemoData) await SeedDemoDataAsync();
         }
 
@@ -97,20 +100,22 @@ namespace Presistence.Data {
 
         #region ==== Demo Data ====
         /// <summary>
-        /// Clears The People-Shaped Content So A Fresh Sample Set Can Replace It. Deliberately
-        /// Narrow: Plans, Categories And Login Accounts Survive, Because Those Are Configuration
-        /// And Credentials Rather Than Sample Records.
+        /// Clears The Seeded Content So A Fresh Set Can Replace It: People, Their Sessions,
+        /// Memberships And Bookings, Plus The Reference Data From The JSON Files — Plans And
+        /// Categories — Since Their Prices Change With The Market Being Served. Login Accounts
+        /// Survive, Because Credentials Are Not Sample Records.
         /// </summary>
         private async Task ResetDemoDataAsync() {
             var memberCount = await _dbContext.Members.CountAsync();
             var trainerCount = await _dbContext.Trainers.CountAsync();
-            if (memberCount == 0 && trainerCount == 0) return;
+            var planCount = await _dbContext.Plans.CountAsync();
+            if (memberCount == 0 && trainerCount == 0 && planCount == 0) return;
 
             _logger.LogWarning(
-                "Seed:ResetDemoData is on — deleting {Members} member(s) and {Trainers} trainer(s) " +
-                "with their sessions, memberships and bookings. Turn it off after the reload so it " +
-                "does not run again on the next start.",
-                memberCount, trainerCount);
+                "Seed:ResetDemoData is on — deleting {Members} member(s), {Trainers} trainer(s) and " +
+                "{Plans} plan(s) with their sessions, memberships and bookings, then reloading from " +
+                "the seed files. Turn it off after the reload so it does not run again on the next start.",
+                memberCount, trainerCount, planCount);
 
             // Children First: The Cascades Would Cover Most Of This, But Being Explicit Keeps The
             // Order Obvious And Survives Anyone Changing A Delete Behaviour Later.
@@ -123,6 +128,11 @@ namespace Presistence.Data {
 
             _dbContext.Members.RemoveRange(_dbContext.Members);
             _dbContext.Trainers.RemoveRange(_dbContext.Trainers);
+            await _dbContext.SaveChangesAsync();
+
+            // Safe Only Now That Every Membership And Session Referencing Them Is Gone.
+            _dbContext.Plans.RemoveRange(_dbContext.Plans);
+            _dbContext.Categories.RemoveRange(_dbContext.Categories);
             await _dbContext.SaveChangesAsync();
 
             // Those Member Rows Are Gone, So Any Account Pointing At One Is Now Pointing At Nothing.

@@ -4,6 +4,10 @@
         public string Name { get; set; } = null!;
         public int DurationDays { get; set; }
         public decimal Price { get; set; }
-        public string DisplayName => $"{Name} — {DurationDays} days — {Price:N0} EGP";
+        /// <summary>
+        /// Deliberately Free Of A Currency Symbol: This Is Built In The Shared Project, Which Has
+        /// No Access To The Configured Currency. The Form Label Beside The Dropdown Names It.
+        /// </summary>
+        public string DisplayName => $"{Name} — {DurationDays} days — {Price:N0}";
     }
 }

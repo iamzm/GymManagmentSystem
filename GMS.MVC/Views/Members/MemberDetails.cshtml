@@ -158,7 +158,7 @@
                                         <td class="text-muted-2 fs-14 mono-num">
                                             @membership.StartDate.ToString("MMM dd, yyyy") → @membership.EndDate.ToString("MMM dd, yyyy")
                                         </td>
-                                        <td class="mono-num">@membership.PricePaid.ToString("N0") EGP</td>
+                                        <td class="mono-num">@Money.Format(membership.PricePaid)</td>
                                         <td><partial name="_StatusPill" model="@membership.Status" /></td>
                                     </tr>
                                 }

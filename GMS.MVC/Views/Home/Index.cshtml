@@ -203,7 +203,7 @@
                             <span class="pill pill--accent mb-3 align-self-start"><i class="bi bi-star-fill"></i>Most popular</span>
                         }
                         <h3 class="h5 mb-2">@plan.Name</h3>
-                        <div class="pricing-card__price mb-1">@plan.Price.ToString("N0") <span class="fs-6 text-muted-2">EGP</span></div>
+                        <div class="pricing-card__price mb-1">@Money.Amount(plan.Price) <span class="fs-6 text-muted-2">@Money.Code</span></div>
                         <div class="text-muted-2 fs-14 mb-3">for @plan.DurationDays days</div>
                         <p class="text-muted-2 fs-14 flex-grow-1">@plan.Dsescription</p>
                         <a class="btn-app @(featured ? "btn-app--primary" : "btn-app--ghost") btn-app--block" asp-controller="Account" asp-action="Register">

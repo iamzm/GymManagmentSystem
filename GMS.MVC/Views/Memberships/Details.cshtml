@@ -84,7 +84,7 @@
                     </div>
                     <div class="detail-item">
                         <div class="detail-item__label">Price Paid</div>
-                        <div class="detail-item__value mono-num">@Model.PricePaid.ToString("N0") EGP</div>
+                        <div class="detail-item__value mono-num">@Money.Format(Model.PricePaid)</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-item__label">Plan Duration</div>
@@ -100,7 +100,7 @@
                     </div>
                     <div class="detail-item">
                         <div class="detail-item__label">Current Plan Price</div>
-                        <div class="detail-item__value mono-num">@Model.PlanCurrentPrice.ToString("N0") EGP</div>
+                        <div class="detail-item__value mono-num">@Money.Format(Model.PlanCurrentPrice)</div>
                     </div>
                 </div>
 
@@ -108,8 +108,8 @@
                     <div class="alert-app alert-app--info mb-0">
                         <i class="bi bi-info-circle-fill"></i>
                         <div>
-                            The plan now sells for @Model.PlanCurrentPrice.ToString("N0") EGP. This contract
-                            keeps the @Model.PricePaid.ToString("N0") EGP it was sold at.
+                            The plan now sells for @Money.Format(Model.PlanCurrentPrice). This contract
+                            keeps the @Money.Format(Model.PricePaid) it was sold at.
                         </div>
                     </div>
                 }
