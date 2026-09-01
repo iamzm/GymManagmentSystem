@@ -28,8 +28,8 @@
                         <h2 class="h5 mb-2">@plan.Name</h2>
 
                         <div class="d-flex align-items-baseline gap-2 mb-3">
-                            <span class="stat-tile__value" style="color:var(--brand-on-soft)">@plan.Price.ToString("N0")</span>
-                            <span class="text-muted-2">EGP</span>
+                            <span class="stat-tile__value" style="color:var(--brand-on-soft)">@Money.Amount(plan.Price)</span>
+                            <span class="text-muted-2">@Money.Code</span>
                         </div>
 
                         <p class="text-muted-2 fs-14">@plan.Dsescription</p>

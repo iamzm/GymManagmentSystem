@@ -79,6 +79,13 @@ namespace GMS.MVC {
             // Allow DI To The Attachment Service (Profile Photo Uploads)
             builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
+            // Resolves The Signed-In Account To Its Gym Record, For The Member Self-Service Screens
+            builder.Services.AddScoped<IMemberContext, MemberContext>();
+
+            // Currency Is Configuration, Not Something Each View Spells Out For Itself
+            builder.Services.Configure<CurrencyOptions>(builder.Configuration.GetSection(CurrencyOptions.SectionName));
+            builder.Services.AddSingleton<IMoneyFormatter, MoneyFormatter>();
+
             // Add AutoMapper To Services
             builder.Services.AddAutoMapper(M => {
                 M.AddProfile(new MemberProfile());

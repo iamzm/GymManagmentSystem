@@ -18,7 +18,7 @@
         <p class="page-head__sub">
             @memberships.Count contract@(memberships.Count == 1 ? "" : "s") shown ·
             @memberships.Count(M => M.IsActive) active ·
-            @memberships.Sum(M => M.PricePaid).ToString("N0") EGP collected
+            @Money.Format(memberships.Sum(M => M.PricePaid)) collected
         </p>
     </div>
     @if (isAdmin) {

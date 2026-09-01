@@ -10,7 +10,7 @@
     <div>
         <div class="page-head__eyebrow">Catalogue · Plans</div>
         <h1 class="page-head__title">@Model.Name</h1>
-        <p class="page-head__sub">@Model.DurationDays days · @Model.Price.ToString("N0") EGP</p>
+        <p class="page-head__sub">@Model.DurationDays days · @Money.Format(Model.Price)</p>
     </div>
     <div class="page-head__actions">
         <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to plans</a>
@@ -42,7 +42,7 @@
                 <div class="detail-grid">
                     <div class="detail-item">
                         <div class="detail-item__label">Price</div>
-                        <div class="detail-item__value mono-num">@Model.Price.ToString("N0") EGP</div>
+                        <div class="detail-item__value mono-num">@Money.Format(Model.Price)</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-item__label">Duration</div>
@@ -50,7 +50,7 @@
                     </div>
                     <div class="detail-item">
                         <div class="detail-item__label">Cost Per Day</div>
-                        <div class="detail-item__value mono-num">@perDay.ToString("N2") EGP</div>
+                        <div class="detail-item__value mono-num">@Money.Format(perDay)</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-item__label">On Sale</div>

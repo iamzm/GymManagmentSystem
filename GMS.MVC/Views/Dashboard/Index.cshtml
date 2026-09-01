@@ -57,9 +57,9 @@
     <div class="stat-tile tile--accent">
         <div class="stat-tile__icon"><i class="bi bi-cash-coin"></i></div>
         <div class="stat-tile__value">@stats.TotalRevenue.ToString("N0")</div>
-        <div class="stat-tile__label">Total Revenue (EGP)</div>
+        <div class="stat-tile__label">Total Revenue (@Money.Code)</div>
         <div class="stat-tile__meta">
-            <i class="bi bi-calendar3"></i> @stats.RevenueThisMonth.ToString("N0") EGP this month
+            <i class="bi bi-calendar3"></i> @Money.Format(stats.RevenueThisMonth) this month
         </div>
     </div>
 </div>
@@ -142,7 +142,7 @@
                                 <div class="meter">
                                     <div class="meter__fill" style="width:@(plan.Percent)%"></div>
                                 </div>
-                                <div class="fs-13 text-subtle mt-1">@plan.Revenue.ToString("N0") EGP collected</div>
+                                <div class="fs-13 text-subtle mt-1">@Money.Format(plan.Revenue) collected</div>
                             </div>
                         }
                     </div>

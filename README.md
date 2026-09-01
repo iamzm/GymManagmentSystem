@@ -18,6 +18,7 @@ Power Fitness is split into distinct modules, each responsible for one part of t
 | 📅 **Sessions** | Gym classes with a category, an assigned trainer, a time window and a capacity — plus search and status filters. |
 | 💳 **Plans** | Subscription plans with price, duration and an activate/deactivate toggle. |
 | 🎫 **Memberships** | The contract linking a Member to a Plan: sell, renew and cancel, with expiry tracking and revenue captured at sale time. |
+| 🔄 **My Plan** | A member's own screen: their current term, any upgrade or downgrade already booked, and the switch itself — always effective when the paid-for term ends. |
 | 🗓️ **Sessions Schedule** | A weekly timetable you can page through, and a per-class roster where staff book members in and release seats. |
 
 ---
@@ -125,6 +126,22 @@ If it is not set, the app logs a warning and seeds no admin. In **Development**,
 
 **Enums** — `Gender`, `BloodType` (8 types), `Specialties` (11 specialties).
 
+**Money** — the currency is configuration, not something each view spells out. `Gym:Currency` sets the code, the numeric format, and whether the code leads or trails; views ask an injected `IMoneyFormatter` for a formatted amount. Defaults to **PKR**. Seeded plan prices live in `wwwroot/Data/plans.json`.
+
+**Phone numbers** — validated as Pakistani mobiles (`03` followed by nine digits, e.g. `03001234567`) in the DTOs. The database check constraint only requires digits, deliberately: which national numbering plan applies is a validation rule, not something to bake into the schema, or serving another country would mean a migration.
+
+### Changing plan
+
+A member can upgrade or downgrade themselves from **My Plan**. The change never takes effect mid-term:
+
+- A monthly plan renewing on the 10th hands over to the new plan **on the 10th** — the member keeps every day they have already paid for, and cover never breaks.
+- A change is stored as an ordinary `MemberShip` row with a future start date, so there is no separate "pending change" table and no schema for it.
+- Only one change can be queued at a time; choosing again replaces it, and it can be cancelled any time before it starts.
+- The price is locked in when the change is booked, so a later price change does not affect it.
+- With no active term, the chosen plan simply starts today.
+
+Because a future-dated contract is still a row in `MemberShips`, "which plan is this member on?" had to become precise: **Active** means started *and* not yet ended, **Scheduled** means dated to begin later, and booking eligibility asks whether the member has cover *on the day of the class* rather than today.
+
 **Business rules captured in the model**
 - A session's status (Upcoming / Ongoing / Completed) is derived from comparing `StartDate`/`EndDate` to the current time — never stored as a static flag.
 - A membership's `Active`/`Expired` status is computed on the fly from `EndDate`, so it is always accurate.
@@ -200,7 +217,15 @@ export ConnectionStrings__DefaultConnections="Server=localhost,1433;Database=Gym
 dotnet run --project GMS.MVC
 ```
 
-Then sign in at `/Account/Login`. In Development the seeded administrator is `admin@powerfitness.com` / `Admin@123`.
+Then sign in at `/Account/Login`. In Development the seeder creates one login per role:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@powerfitness.com` | `Admin@123` |
+| Trainer | `bilal.ahmed@powerfitness.pk` | `Demo@123` |
+| Member | `ali.raza@example.com` | `Demo@123` |
+
+The trainer and member logins only appear when `Seed:SeedDemoData` and `Seed:DemoPassword` are set, and they are linked to the matching sample records. Anyone registering at `/Account/Register` lands in the **Member** role.
 
 ### Seeding
 
@@ -212,8 +237,22 @@ The `Seed` configuration section controls startup seeding:
 | `Seed:AdminPassword` | Its password. **Blank in `appsettings.json` on purpose** — supply per environment. |
 | `Seed:AdminFullName` | Display name for that account. |
 | `Seed:SeedDemoData` | When `true` (Development default), seeds sample trainers, members, memberships, sessions and bookings on an empty database, so a fresh clone shows a populated dashboard instead of six zeroes. |
+| `Seed:DemoPassword` | Password for the demo member and trainer logins created alongside the sample records, so every role can be signed into. Blank means no demo logins. |
+| `Seed:ResetDemoData` | **Destructive, off by default.** Turn on once to wipe the seeded content — people, sessions, memberships, bookings, plans and categories — and reload it all from the seed files, then turn it off. Login accounts are left alone. Use it after changing currency or plan prices, since plans are otherwise only seeded into an empty table. Development only. |
 
-Categories and plans are always seeded from `wwwroot/Data/*.json` when their tables are empty.
+Categories and plans are seeded from `wwwroot/Data/*.json` when their tables are empty — so to change plan prices on a database that already has them, edit the JSON and run once with `Seed:ResetDemoData`.
+
+### Serving a different market
+
+Two settings and one file, no code:
+
+| What | Where |
+|---|---|
+| Currency code and formatting | `Gym:Currency` in `appsettings.json` |
+| Plan names, durations and prices | `wwwroot/Data/plans.json` |
+| Mobile number format | the `[RegularExpression]` on the phone fields in the member and trainer DTOs |
+
+The database only requires a phone to be digits — which national numbering plan applies is a validation rule, so changing country does not mean a migration.
 
 ---
 
@@ -235,7 +274,8 @@ Categories and plans are always seeded from `wwwroot/Data/*.json` when their tab
 
 ## 📌 Possible Next Steps
 
-- Link `AppUser` accounts to their `Member` / `Trainer` record so members can book their own classes
+- Let members book their own classes (accounts already resolve to their gym record)
+- A user-management screen so an admin can assign roles without touching the database
 - Unit tests for the Service layer
 - API endpoints alongside the MVC views
 - Pagination on the list views (search and filtering are in place)

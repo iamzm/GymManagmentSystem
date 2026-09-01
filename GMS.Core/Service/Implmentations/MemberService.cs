@@ -162,6 +162,12 @@ namespace Services.Implmentations {
         public async Task<string?> GetMemberPhoto(int memberId)
             => (await _unitOfWork.GetRepository<Member>().GetAsync(memberId))?.Photo;
 
+        public async Task<int?> FindMemberIdByEmail(string email) {
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var matches = await _unitOfWork.GetRepository<Member>().GetAllAsync(M => M.Email == email);
+            return matches.FirstOrDefault()?.Id;
+        }
+
         #region Helper Methods
         private async Task<bool> IsEmailExist(int memberId, string email) {
             var memberEmail = await _unitOfWork.GetRepository<Member>().GetAllAsync(m => m.Email == email && m.Id != memberId);

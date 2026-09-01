@@ -43,7 +43,7 @@
                         </div>
 
                         <div class="col-12 col-md-6">
-                            <label asp-for="Price">Price (EGP) <span class="req">*</span></label>
+                            <label asp-for="Price">Price (@Money.Code) <span class="req">*</span></label>
                             <input asp-for="Price" type="number" step="0.01" class="form-control" min="0" />
                             <span asp-validation-for="Price"></span>
                         </div>

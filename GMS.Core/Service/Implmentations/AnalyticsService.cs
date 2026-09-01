@@ -20,7 +20,11 @@ namespace Services.Implmentations {
             var bookings = (await _unitOfWork.GetRepository<MemberSession>().GetAllAsync()).ToList();
             var plans = (await _unitOfWork.GetRepository<Plan>().GetAllAsync()).ToList();
 
-            var active = memberships.Where(M => M.EndDate >= now).ToList();
+            // A Contract Dated To Start Later Is Sold But Not Yet Running, So It Counts As
+            // Scheduled Revenue Rather Than An Active Subscription.
+            var today = DateOnly.FromDateTime(now);
+            var active = memberships.Where(M => M.CreatedAt <= today && M.EndDate >= now).ToList();
+            var scheduled = memberships.Where(M => M.CreatedAt > today).ToList();
 
             return new AnalyticDTO {
                 // "Active Members" Counts People, Not Contracts — A Renewal Must Not Count Twice.
@@ -35,7 +39,8 @@ namespace Services.Implmentations {
                 TotalBookings = bookings.Count,
 
                 ActiveMemberships = active.Count,
-                ExpiredMemberships = memberships.Count - active.Count,
+                ScheduledMemberships = scheduled.Count,
+                ExpiredMemberships = memberships.Count - active.Count - scheduled.Count,
                 ExpiringSoon = active.Count(M => (M.EndDate.Date - now.Date).Days <= 7),
                 ActivePlans = plans.Count(P => P.IsActive),
 
@@ -49,8 +54,9 @@ namespace Services.Implmentations {
             var dashboard = new DashboardDTO { Stats = await GetAnalyticData() };
 
             var membershipRepo = _unitOfWork.GetMembershipRepository();
+            var today = DateOnly.FromDateTime(now);
             var allMemberships = (await membershipRepo.GetAllWithMemberAndPlanAsync()).ToList();
-            var activeMemberships = allMemberships.Where(M => M.EndDate >= now).ToList();
+            var activeMemberships = allMemberships.Where(M => M.CreatedAt <= today && M.EndDate >= now).ToList();
 
             // Plan Distribution — Share Of Live Contracts Sitting On Each Plan.
             var activeCount = activeMemberships.Count;

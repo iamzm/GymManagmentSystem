@@ -1,0 +1,127 @@
+﻿@model PlanOptionDTO
+@{
+    ViewData["Title"] = "Confirm Plan Change";
+    ViewData["Crumb"] = $"Switching to {Model.Name}";
+    var my = ViewBag.MyMembership as MyMembershipDTO;
+    var current = my?.Current;
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Account · My Plan</div>
+        <h1 class="page-head__title">Confirm your change</h1>
+        <p class="page-head__sub">Check the dates before you commit — nothing changes until your current term ends.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to my plan</a>
+    </div>
+</div>
+
+<div class="row justify-content-center g-4">
+    <div class="col-12 col-lg-8">
+
+        @* ---------- Before / after ---------- *@
+        <div class="card-app mb-4">
+            <div class="card-app__body">
+                <div class="row g-3 align-items-stretch">
+                    <div class="col-12 col-md-5">
+                        <div class="detail-item h-100">
+                            <div class="detail-item__label">Now until @(current?.EndDate.ToString("MMM dd") ?? "today")</div>
+                            <div class="h5 mb-1">@(current?.PlanName ?? "No plan")</div>
+                            @if (current is not null) {
+                                <div class="text-muted-2 mono-num fs-14">@Money.Format(current.PricePaid) · @current.PlanDurationDays days</div>
+                            }
+                            else {
+                                <div class="text-muted-2 fs-14">You're not subscribed at the moment.</div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-2 d-flex align-items-center justify-content-center">
+                        <span class="icon-chip"><i class="bi bi-arrow-right"></i></span>
+                    </div>
+
+                    <div class="col-12 col-md-5">
+                        <div class="detail-item h-100" style="background:var(--brand-50);border-color:var(--brand-300)">
+                            <div class="detail-item__label" style="color:var(--brand-on-soft)">From @Model.EffectiveFrom.ToString("MMM dd, yyyy")</div>
+                            <div class="h5 mb-1">@Model.Name</div>
+                            <div class="text-muted-2 mono-num fs-14">@Money.Format(Model.Price) · @Model.DurationDays days</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ---------- What happens ---------- *@
+        <div class="card-app mb-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-list-check"></i></span>
+                <div><h2 class="card-app__title">What happens</h2></div>
+            </div>
+            <div class="card-app__body">
+                <ul class="list-unstyled d-grid gap-3 mb-0">
+                    @if (current is not null) {
+                        <li class="d-flex gap-3">
+                            <i class="bi bi-1-circle-fill" style="color:var(--brand-600)"></i>
+                            <span>
+                                You stay on <strong>@current.PlanName</strong> until
+                                <strong class="mono-num">@current.EndDate.ToString("MMMM dd, yyyy")</strong> —
+                                that's @current.DaysRemaining more day@(current.DaysRemaining == 1 ? "" : "s") you've already paid for.
+                            </span>
+                        </li>
+                        <li class="d-flex gap-3">
+                            <i class="bi bi-2-circle-fill" style="color:var(--brand-600)"></i>
+                            <span>
+                                On <strong class="mono-num">@Model.EffectiveFrom.ToString("MMMM dd, yyyy")</strong>,
+                                <strong>@Model.Name</strong> takes over automatically and runs to
+                                <span class="mono-num">@Model.EffectiveUntil.ToString("MMM dd, yyyy")</span>.
+                            </span>
+                        </li>
+                    }
+                    else {
+                        <li class="d-flex gap-3">
+                            <i class="bi bi-1-circle-fill" style="color:var(--brand-600)"></i>
+                            <span>
+                                <strong>@Model.Name</strong> starts today and runs to
+                                <span class="mono-num">@Model.EffectiveUntil.ToString("MMM dd, yyyy")</span>.
+                            </span>
+                        </li>
+                    }
+                    <li class="d-flex gap-3">
+                        <i class="bi bi-3-circle-fill" style="color:var(--brand-600)"></i>
+                        <span>
+                            You'll be charged <strong class="mono-num">@Money.Format(Model.Price)</strong> for that term.
+                            That price is locked in now, so a later price change won't affect you.
+                        </span>
+                    </li>
+                    <li class="d-flex gap-3">
+                        <i class="bi bi-arrow-counterclockwise" style="color:var(--text-muted)"></i>
+                        <span class="text-muted-2">
+                            Changed your mind? You can cancel this any time before it starts.
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        @if (my?.HasScheduledChange == true && my.Scheduled!.PlanId != Model.PlanId) {
+            <div class="alert-app alert-app--warn">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div>
+                    You already have <strong>@my.Scheduled.PlanName</strong> booked for
+                    @my.Scheduled.StartDate.ToString("MMM dd"). Confirming this replaces it.
+                </div>
+            </div>
+        }
+
+        <form asp-action="ChangePlan" method="post" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="PlanId" value="@Model.PlanId" />
+            <a class="btn-app btn-app--ghost flex-fill" asp-action="Index">Cancel</a>
+            <button type="submit" class="btn-app btn-app--primary flex-fill">
+                <i class="bi bi-check-lg"></i>
+                Confirm — start @Model.Name on @Model.EffectiveFrom.ToString("MMM dd")
+            </button>
+        </form>
+    </div>
+</div>
