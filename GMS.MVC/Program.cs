@@ -27,6 +27,9 @@ namespace GMS.MVC {
 
             // Seeding Options (Bootstrap Admin Credentials + Optional Demo Records)
             var seedOptions = builder.Configuration.GetSection(SeedOptions.SectionName).Get<SeedOptions>() ?? new SeedOptions();
+            // The Destructive Demo Reset Is Development-Only, And That Is Enforced Here Rather
+            // Than Left To A Comment In A Config File That Nobody Reads Before Deploying.
+            seedOptions.IsDevelopment = builder.Environment.IsDevelopment();
             builder.Services.AddSingleton(seedOptions);
 
             #region Identity

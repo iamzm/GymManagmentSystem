@@ -19,6 +19,12 @@
         public bool ResetDemoData { get; set; }
 
         /// <summary>
+        /// Set By The Host At Startup. <see cref="ResetDemoData"/> Is Refused Unless This Is True,
+        /// So A Flag Left Switched On Cannot Quietly Wipe Real Records On A Deployed Environment.
+        /// </summary>
+        public bool IsDevelopment { get; set; }
+
+        /// <summary>
         /// Recovery Hatch, Off By Default. When On, Startup Resets The Administrator's Password To
         /// <see cref="AdminPassword"/>, Clears Any Lockout, And Makes Sure The Account Still Holds
         /// The Admin Role. For The Case Where A Deployment Exists But Nobody Can Sign Into It.

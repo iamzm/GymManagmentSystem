@@ -24,7 +24,17 @@ namespace Presistence.Data {
 
             // The Reset Runs First So The Seeders Below See An Empty Slate And Lay Everything
             // Down Again — Otherwise They Would Skip Tables The Reset Had Just Cleared.
-            if (_seedOptions.ResetDemoData) await ResetDemoDataAsync();
+            if (_seedOptions.ResetDemoData) {
+                if (_seedOptions.IsDevelopment) {
+                    await ResetDemoDataAsync();
+                }
+                else {
+                    _logger.LogWarning(
+                        "Seed:ResetDemoData is on, but this is not the Development environment, so the " +
+                        "destructive reset was refused. Left to run it would delete every member, trainer, " +
+                        "session, membership, booking and plan on each restart. Set it to false.");
+                }
+            }
 
             await SeedCategoriesAsync();
             await SeedPlansAsync();
