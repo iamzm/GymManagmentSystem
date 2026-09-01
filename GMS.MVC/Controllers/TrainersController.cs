@@ -1,128 +1,170 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using GMS.MVC.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Services.Abstraction.Contract;
 using Shared.DTOs.TrainerDTOs;
 
 namespace GMS.MVC.Controllers {
-    public class TrainersController(IServiceManger serviceManger) : Controller {
+    [Authorize(Policy = AppPolicies.StaffOnly)]
+    public class TrainersController(IServiceManger serviceManger, IAttachmentService attachmentService) : Controller {
 
         #region ==== Get All Trainers ====
-        public async Task<ActionResult> Index() {
-            var trainers = await serviceManger.TrainerService.GetAllTrainers();
+        public async Task<IActionResult> Index(string? search, int? specialty) {
+            var trainers = await serviceManger.TrainerService.GetAllTrainers(search, specialty);
+            ViewBag.Search = search;
+            ViewBag.Specialty = specialty;
             return View(trainers);
-        } 
+        }
         #endregion
 
         #region ==== Get Trainer Details ====
-        public async Task<ActionResult> TrainerDetails(int id) {
+        public async Task<IActionResult> TrainerDetails(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
-            var Trainer = await serviceManger.TrainerService.GetTrainerDetails(id);
-            if (Trainer is null) {
-                TempData["ErorrMessage"] = $"Trainer With Id {id} Not Found";
+
+            var trainer = await serviceManger.TrainerService.GetTrainerDetails(id);
+            if (trainer is null) {
+                TempData["ErrorMessage"] = $"Trainer With Id {id} Was Not Found.";
                 return RedirectToAction(nameof(Index));
             }
-            return View(Trainer);
+
+            ViewBag.Sessions = await serviceManger.TrainerService.GetTrainerSessions(id);
+            return View(trainer);
         }
         #endregion
 
         #region ==== Create Trainer ====
-        public ActionResult Create() {
-            return View();
-        }
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        public IActionResult Create() => View(new CreateTrainerDTO());
 
-        [HttpPost] // Get DTO From Client Side Then Create The Trainer
-        public async Task<ActionResult> CreateTrainer(CreateTrainerDTO createTrainerDTO) {
+        [HttpPost]
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateTrainer(CreateTrainerDTO createTrainerDTO, IFormFile? photoFile) {
+            if (!ModelState.IsValid) return View(nameof(Create), createTrainerDTO);
 
-            if (!ModelState.IsValid) {
-                ModelState.AddModelError("DataInvalid", "Check The Data And Missing Fields");
+            var (uploaded, photoName) = await TryStorePhoto(photoFile, existingPhoto: null);
+            if (!uploaded) return View(nameof(Create), createTrainerDTO);
+            createTrainerDTO.Photo = photoName;
+
+            var result = await serviceManger.TrainerService.CreateTrainer(createTrainerDTO);
+            if (!result) {
+                // The Save Failed, So Do Not Leave The Just-Uploaded File Orphaned On Disk.
+                attachmentService.Delete(createTrainerDTO.Photo, UploadFolders.Trainers);
+                createTrainerDTO.Photo = null;
+                ModelState.AddModelError(string.Empty, "Creating The Trainer Failed. That Email Or Phone Number May Already Be Registered.");
                 return View(nameof(Create), createTrainerDTO);
             }
 
-            // Create The Trainer
-            var result = await serviceManger.TrainerService.CreateTrainer(createTrainerDTO);
-
-            if (result) {
-                TempData["SuccessMessage"] = "Trainer Created Successfully";
-            }
-            else {
-                TempData["ErorrMessage"] = $"Create Trainer Failed, Check The Phone Or Email";
-            }
-
+            TempData["SuccessMessage"] = $"{createTrainerDTO.Name} Was Added To The Trainers List.";
             return RedirectToAction(nameof(Index));
         }
         #endregion
 
         #region ==== Edit Trainer ====
-        public async Task<ActionResult> EditTrainer(int id) {
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        public async Task<IActionResult> EditTrainer(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
-                return RedirectToAction(nameof(Index));
-            }
-            var Trainer = await serviceManger.TrainerService.GetTrainerToUpdate(id);
-
-            if (Trainer is null) {
-                TempData["ErorrMessage"] = $"Trainer With Id {id} Not Found";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
 
-            return View(Trainer);
+            var trainer = await serviceManger.TrainerService.GetTrainerToUpdate(id);
+            if (trainer is null) {
+                TempData["ErrorMessage"] = $"Trainer With Id {id} Was Not Found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            trainer.Id = id;
+            return View(trainer);
         }
 
-        [HttpPost] // Get DTO From Client Side Then Update The Trainer
-        public async Task<ActionResult> EditTrainer([FromRoute] int id, TrainerToUpdateDTO TrainerToUpdateDTO) {
-            if (!ModelState.IsValid) {
-                ModelState.AddModelError("DataInvalid", "Check The Data And Missing Fields");
-                return View(nameof(EditTrainer), TrainerToUpdateDTO);
+        [HttpPost]
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditTrainer([FromRoute] int id, TrainerToUpdateDTO trainerToUpdateDTO, IFormFile? photoFile) {
+            trainerToUpdateDTO.Id = id;
+            if (!ModelState.IsValid) return View(nameof(EditTrainer), trainerToUpdateDTO);
+
+            var currentPhoto = await serviceManger.TrainerService.GetTrainerPhoto(id);
+            trainerToUpdateDTO.Photo = currentPhoto;
+
+            var (uploaded, photoName) = await TryStorePhoto(photoFile, currentPhoto);
+            if (!uploaded) return View(nameof(EditTrainer), trainerToUpdateDTO);
+            trainerToUpdateDTO.Photo = photoName;
+
+            var result = await serviceManger.TrainerService.UpdateTrainerDetails(trainerToUpdateDTO, id);
+            if (!result) {
+                ModelState.AddModelError(string.Empty, "Updating The Trainer Failed. That Email Or Phone Number May Belong To Someone Else.");
+                return View(nameof(EditTrainer), trainerToUpdateDTO);
             }
 
-            // Update The Memeber
-            var result = await serviceManger.TrainerService.UpdateTrainerDetails(TrainerToUpdateDTO, id);
+            // The Record Now Points At The New File, So The Replaced One Can Go.
+            if (photoFile is { Length: > 0 } && currentPhoto != trainerToUpdateDTO.Photo)
+                attachmentService.Delete(currentPhoto, UploadFolders.Trainers);
+
+            TempData["SuccessMessage"] = $"{trainerToUpdateDTO.Name}'s Details Were Updated.";
+            return RedirectToAction(nameof(Index));
+        }
+        #endregion
+
+        #region ==== Delete Trainer ====
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        public async Task<IActionResult> Delete(int id) {
+            if (id <= 0) {
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var trainer = await serviceManger.TrainerService.GetTrainerDetails(id);
+            if (trainer is null) {
+                TempData["ErrorMessage"] = $"Trainer With Id {id} Was Not Found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View(trainer);
+        }
+
+        [HttpPost]
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteTrainer([FromForm] int id) {
+            var photo = await serviceManger.TrainerService.GetTrainerPhoto(id);
+            var result = await serviceManger.TrainerService.RemoveTrainer(id);
 
             if (result) {
-                TempData["SuccessMessage"] = "Trainer Updated Successfully";
+                attachmentService.Delete(photo, UploadFolders.Trainers);
+                TempData["SuccessMessage"] = "The Trainer Was Deleted.";
             }
             else {
-                TempData["ErorrMessage"] = $"Update Trainer Failed, Check The Data";
+                TempData["ErrorMessage"] = "Deleting The Trainer Failed. They May Still Be Leading An Upcoming Class.";
             }
 
             return RedirectToAction(nameof(Index));
         }
         #endregion
 
-        #region ==== Delete Trainer ====
-        public async Task<ActionResult> Delete(int id) {
-            if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
-                return RedirectToAction(nameof(Index));
-            }
-            var Trainer = await serviceManger.TrainerService.GetTrainerDetails(id);
+        #region ==== Helper Method ====
+        /// <summary>See <c>MembersController.TryStorePhoto</c> — Same Contract, Trainers Folder.</summary>
+        private async Task<(bool Stored, string? Photo)> TryStorePhoto(IFormFile? photoFile, string? existingPhoto) {
+            if (photoFile is null || photoFile.Length == 0) return (true, existingPhoto);
 
-            if (Trainer is null) {
-                TempData["ErorrMessage"] = $"Trainer With Id {id} Not Found";
-                return RedirectToAction(nameof(Index));
+            if (!attachmentService.IsAllowed(photoFile.FileName, photoFile.Length)) {
+                ModelState.AddModelError("photoFile", "The Photo Must Be A JPG, PNG Or WEBP Image Under 2 MB.");
+                return (false, existingPhoto);
             }
 
-            ViewBag.TrainerName = Trainer.Name;
-            ViewBag.Id = Trainer.Id;
+            await using var stream = photoFile.OpenReadStream();
+            var storedName = await attachmentService.UploadAsync(stream, photoFile.FileName, UploadFolders.Trainers);
 
-            return View();
-        }
-
-        [HttpPost] // Get DTO From Client Side Then Delete The Trainer
-        public async Task<ActionResult> DeleteTrainer([FromForm] int id) {
-
-            var result = await serviceManger.TrainerService.RemoveTrainer(id);
-
-            if (result) {
-                TempData["SuccessMessage"] = "Trainer Deleted Successfully";
-            }
-            else {
-                TempData["ErorrMessage"] = $"Delete Trainer Failed, Check The Active Session";
+            if (storedName is null) {
+                ModelState.AddModelError("photoFile", "The Photo Could Not Be Saved. Please Try A Different Image.");
+                return (false, existingPhoto);
             }
 
-            return RedirectToAction(nameof(Index));
+            return (true, storedName);
         }
         #endregion
     }

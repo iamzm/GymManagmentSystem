@@ -1,143 +1,198 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using GMS.MVC.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.Abstraction.Contract;
 using Shared.DTOs.MemberDTOs;
 
-namespace Presentation.MVC.Controllers {
-    public class MembersController(IServiceManger serviceManger) : Controller {
+namespace GMS.MVC.Controllers {
+    [Authorize(Policy = AppPolicies.StaffOnly)]
+    public class MembersController(IServiceManger serviceManger, IAttachmentService attachmentService) : Controller {
 
         #region ==== Get All Members ====
-        public async Task<ActionResult> Index() {
-            var members = await serviceManger.MemberService.GetAllMembers();
+        public async Task<IActionResult> Index(string? search, string? status) {
+            var members = await serviceManger.MemberService.GetAllMembers(search, status);
+            ViewBag.Search = search;
+            ViewBag.Status = status;
             return View(members);
-        } 
+        }
         #endregion
 
         #region ==== Get Member Details ====
-        public async Task<ActionResult> MemberDetails(int id) {
+        public async Task<IActionResult> MemberDetails(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
+
             var member = await serviceManger.MemberService.GetMemberDetailsById(id);
             if (member is null) {
-                TempData["ErorrMessage"] = $"Member With Id {id} Not Found";
+                TempData["ErrorMessage"] = $"Member With Id {id} Was Not Found.";
                 return RedirectToAction(nameof(Index));
             }
+
+            member.HealthRecord = await serviceManger.MemberService.GetMemberHealthRecordDTO(id);
+            ViewBag.Memberships = await serviceManger.MemberService.GetMemberMemberships(id);
+            ViewBag.Bookings = await serviceManger.MemberService.GetMemberBookings(id);
+
             return View(member);
         }
-        public async Task<ActionResult> HealthRecordDetails(int id) {
-            if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
-                return RedirectToAction(nameof(Index));
-            }
-            var healthRecord = await serviceManger.MemberService.GetMemberHealthRecordDTO(id);
 
-            if (healthRecord is null) {
-                TempData["ErorrMessage"] = $"Member With Id {id} Not Found";
+        public async Task<IActionResult> HealthRecordDetails(int id) {
+            if (id <= 0) {
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
+
+            var healthRecord = await serviceManger.MemberService.GetMemberHealthRecordDTO(id);
+            if (healthRecord is null) {
+                TempData["ErrorMessage"] = $"Member With Id {id} Was Not Found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var member = await serviceManger.MemberService.GetMemberDetailsById(id);
+            ViewBag.MemberName = member?.Name ?? "Member";
+            ViewBag.MemberId = id;
+
             return View(healthRecord);
-        } 
+        }
         #endregion
 
         #region ==== Create Member ====
-        public ActionResult Create() {
-            return View();
-        }
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        public IActionResult Create() => View(new CreateMemberDTO());
 
-        [HttpPost] // Get DTO From Client Side Then Create The Member
-        public async Task<ActionResult> CreateMember(CreateMemberDTO createMemberDTO) {
+        [HttpPost]
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateMember(CreateMemberDTO createMemberDTO, IFormFile? photoFile) {
+            if (!ModelState.IsValid) return View(nameof(Create), createMemberDTO);
 
-            if (!ModelState.IsValid) {
-                ModelState.AddModelError("DataInvalid", "Check The Data And Missing Fields");
+            var (uploaded, photoName) = await TryStorePhoto(photoFile, existingPhoto: null);
+            if (!uploaded) return View(nameof(Create), createMemberDTO);
+            createMemberDTO.Photo = photoName;
+
+            var result = await serviceManger.MemberService.CreateMember(createMemberDTO);
+            if (!result) {
+                // The Save Failed, So Do Not Leave The Just-Uploaded File Orphaned On Disk.
+                attachmentService.Delete(createMemberDTO.Photo, UploadFolders.Members);
+                createMemberDTO.Photo = null;
+                ModelState.AddModelError(string.Empty, "Creating The Member Failed. That Email Or Phone Number May Already Be Registered.");
                 return View(nameof(Create), createMemberDTO);
             }
 
-            // Create The Memeber
-            var result = await serviceManger.MemberService.CreateMember(createMemberDTO);
-
-            if (result) {
-                TempData["SuccessMessage"] = "Member Created Successfully";
-            }
-            else {
-                TempData["ErorrMessage"] = $"Create Member Failed, Check The Phone Or Email";
-            }
-
+            TempData["SuccessMessage"] = $"{createMemberDTO.Name} Was Added To The Members List.";
             return RedirectToAction(nameof(Index));
-        } 
+        }
         #endregion
 
         #region ==== Edit Member ====
-        public async Task<ActionResult> EditMember(int id) {
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        public async Task<IActionResult> EditMember(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
-            var member = await serviceManger.MemberService.GetMemberToUpdate(id);
 
+            var member = await serviceManger.MemberService.GetMemberToUpdate(id);
             if (member is null) {
-                TempData["ErorrMessage"] = $"Member With Id {id} Not Found";
+                TempData["ErrorMessage"] = $"Member With Id {id} Was Not Found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            member.Id = id;
+            return View(member);
+        }
+
+        [HttpPost]
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditMember([FromRoute] int id, MemberToUpdateDTO memberToUpdateDTO, IFormFile? photoFile) {
+            memberToUpdateDTO.Id = id;
+            if (!ModelState.IsValid) return View(nameof(EditMember), memberToUpdateDTO);
+
+            var currentPhoto = await serviceManger.MemberService.GetMemberPhoto(id);
+            memberToUpdateDTO.Photo = currentPhoto;
+
+            var (uploaded, photoName) = await TryStorePhoto(photoFile, currentPhoto);
+            if (!uploaded) return View(nameof(EditMember), memberToUpdateDTO);
+            memberToUpdateDTO.Photo = photoName;
+
+            var result = await serviceManger.MemberService.UpdateMemberDetails(id, memberToUpdateDTO);
+            if (!result) {
+                ModelState.AddModelError(string.Empty, "Updating The Member Failed. That Email Or Phone Number May Belong To Someone Else.");
+                return View(nameof(EditMember), memberToUpdateDTO);
+            }
+
+            // The Record Now Points At The New File, So The Replaced One Can Go.
+            if (photoFile is { Length: > 0 } && currentPhoto != memberToUpdateDTO.Photo)
+                attachmentService.Delete(currentPhoto, UploadFolders.Members);
+
+            TempData["SuccessMessage"] = $"{memberToUpdateDTO.Name}'s Details Were Updated.";
+            return RedirectToAction(nameof(Index));
+        }
+        #endregion
+
+        #region ==== Delete Member ====
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        public async Task<IActionResult> Delete(int id) {
+            if (id <= 0) {
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var member = await serviceManger.MemberService.GetMemberDetailsById(id);
+            if (member is null) {
+                TempData["ErrorMessage"] = $"Member With Id {id} Was Not Found.";
                 return RedirectToAction(nameof(Index));
             }
 
             return View(member);
         }
 
-        [HttpPost] // Get DTO From Client Side Then Update The Member
-        public async Task<ActionResult> EditMember([FromRoute] int id, MemberToUpdateDTO memberToUpdateDTO) {
-            if (!ModelState.IsValid) {
-                ModelState.AddModelError("DataInvalid", "Check The Data And Missing Fields");
-                return View(nameof(EditMember), memberToUpdateDTO);
-            }
-
-            // Update The Memeber
-            var result = await serviceManger.MemberService.UpdateMemberDetails(id, memberToUpdateDTO);
-
-            if (result) {
-                TempData["SuccessMessage"] = "Member Updated Successfully";
-            }
-            else {
-                TempData["ErorrMessage"] = $"Update Member Failed, Check The Data";
-            }
-
-            return RedirectToAction(nameof(Index));
-        } 
-        #endregion
-
-        #region ==== Delete Member ====
-        public async Task<ActionResult> Delete(int id) {
-            if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
-                return RedirectToAction(nameof(Index));
-            }
-            var member = await serviceManger.MemberService.GetMemberDetailsById(id);
-
-            if (member is null) {
-                TempData["ErorrMessage"] = $"Member With Id {id} Not Found";
-                return RedirectToAction(nameof(Index));
-            }
-
-            ViewBag.MemberName = member.Name;
-            ViewBag.Id = member.Id;
-
-            return View();
-        }
-
-        [HttpPost] // Get DTO From Client Side Then Delete The Member
-        public async Task<ActionResult> DeleteMember([FromForm] int id) {
-
+        [HttpPost]
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteMember([FromForm] int id) {
+            var photo = await serviceManger.MemberService.GetMemberPhoto(id);
             var result = await serviceManger.MemberService.RemoveMember(id);
 
             if (result) {
-                TempData["SuccessMessage"] = "Member Deleted Successfully";
+                attachmentService.Delete(photo, UploadFolders.Members);
+                TempData["SuccessMessage"] = "The Member Was Deleted.";
             }
             else {
-                TempData["ErorrMessage"] = $"Delete Member Failed, Check The Active Session";
+                TempData["ErrorMessage"] = "Deleting The Member Failed. They May Still Be Booked Into An Upcoming Class.";
             }
 
             return RedirectToAction(nameof(Index));
-        } 
+        }
+        #endregion
+
+        #region ==== Helper Method ====
+        /// <summary>
+        /// Stores An Uploaded Photo And Hands Back The File Name To Record. Returns
+        /// <c>Stored: false</c> (With A Model Error Already Added) When The Upload Was Rejected,
+        /// So The Caller Redisplays The Form Instead Of Saving A Member Whose Photo Silently Vanished.
+        /// With No File Posted, The Existing Photo Is Kept.
+        /// </summary>
+        private async Task<(bool Stored, string? Photo)> TryStorePhoto(IFormFile? photoFile, string? existingPhoto) {
+            if (photoFile is null || photoFile.Length == 0) return (true, existingPhoto);
+
+            if (!attachmentService.IsAllowed(photoFile.FileName, photoFile.Length)) {
+                ModelState.AddModelError("photoFile", "The Photo Must Be A JPG, PNG Or WEBP Image Under 2 MB.");
+                return (false, existingPhoto);
+            }
+
+            await using var stream = photoFile.OpenReadStream();
+            var storedName = await attachmentService.UploadAsync(stream, photoFile.FileName, UploadFolders.Members);
+
+            if (storedName is null) {
+                ModelState.AddModelError("photoFile", "The Photo Could Not Be Saved. Please Try A Different Image.");
+                return (false, existingPhoto);
+            }
+
+            return (true, storedName);
+        }
         #endregion
     }
 }

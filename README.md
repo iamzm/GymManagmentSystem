@@ -1,6 +1,6 @@
 # 🏋️ Power Fitness — Gym Management System
 
-A full-featured **Gym Management System** built with **ASP.NET Core MVC (.NET 8)**, designed around clean, layered architecture and solid backend design patterns. The system manages gym members, trainers, subscription plans, class sessions, membership contracts, and session bookings — with a live analytics dashboard on top.
+A full-featured **Gym Management System** built with **ASP.NET Core MVC (.NET 10)**, designed around clean, layered architecture and solid backend design patterns. The system manages gym members, trainers, subscription plans, class sessions, membership contracts and session bookings — behind role-based authentication, with a live analytics dashboard on top.
 
 ---
 
@@ -10,14 +10,15 @@ Power Fitness is split into distinct modules, each responsible for one part of t
 
 | Module | Description |
 |---|---|
-| 🏠 **Dashboard** | Landing page with live gym stats: total members, active memberships, trainers count, and session status breakdown. |
-| 👥 **Members** | Register and manage gym members, including photo, contact info, and a personal health record. |
-| 🏋️ **Trainers** | Trainer profiles with a specialty (Yoga, CrossFit, Bodybuilding, Weight Loss, etc.). |
-| 📅 **Sessions** | Gym classes (e.g. Yoga, Boxing) with a category, an assigned trainer, a time window, and a capacity. |
-| 💳 **Plans** | Subscription plans (e.g. Basic, Premium, Annual) with price and duration. |
-| 🎫 **Memberships** | The contract linking a Member to a Plan — defines when a subscription starts, ends, and whether it's active. |
-| 📋 **Session Bookings** | The junction between Members and Sessions — members reserve a seat in a session, and admins track it. |
-| 📊 **Analytics** | Real-time stats computed directly from the database (not static numbers). |
+| 🌐 **Public site** | Marketing landing page driven by real data: live member/trainer counters, the plans actually on sale and the classes genuinely coming up this week. |
+| 🔐 **Accounts** | ASP.NET Core Identity: sign-in, self-registration, password change, profile, and role-based access (Admin / Trainer / Member). |
+| 📊 **Dashboard** | The signed-in home screen: live gym metrics, booking-activity chart, plan distribution, renewals due and the week ahead. |
+| 👥 **Members** | Register and manage members, with photo upload, a personal health record (incl. derived BMI), search and status filters. |
+| 🏋️ **Trainers** | Trainer profiles with a specialty, photo, workload counters and the classes they lead. |
+| 📅 **Sessions** | Gym classes with a category, an assigned trainer, a time window and a capacity — plus search and status filters. |
+| 💳 **Plans** | Subscription plans with price, duration and an activate/deactivate toggle. |
+| 🎫 **Memberships** | The contract linking a Member to a Plan: sell, renew and cancel, with expiry tracking and revenue captured at sale time. |
+| 🗓️ **Sessions Schedule** | A weekly timetable you can page through, and a per-class roster where staff book members in and release seats. |
 
 ---
 
@@ -34,15 +35,19 @@ Gym_Managment_System/
 │   └── Service.Abstraction/        → Service interfaces (contracts) consumed by the presentation layer
 │
 ├── GMS.Infrastructure/
-│   ├── Presistence/                → EF Core DbContext, entity configurations, migrations, repositories
-│   └── Presentation/                → Shared MVC presentation-layer controllers/helpers
+│   ├── Presistence/                → EF Core DbContext, entity configurations, migrations, repositories, Identity
+│   └── Presentation/               → Shared MVC presentation-layer controllers/helpers
 │
 ├── Shared/
-│   └── DTOs/                       → Data Transfer Objects grouped per module (Members, Trainers, Plans, Sessions, Analytics)
+│   └── DTOs/                       → DTOs grouped per module (Members, Trainers, Plans, Sessions,
+│                                     Memberships, Bookings, Analytics)
 │
 └── GMS.MVC/
     ├── Controllers/                → ASP.NET Core MVC controllers (talk only to the Service layer)
-    ├── Views/                      → Razor views (CRUD pages per module)
+    ├── Models/                     → View models for the account screens and shared partials
+    ├── Services/                   → Presentation-layer services (attachment storage, policy names)
+    ├── Views/                      → Razor views (three layouts: app shell, public, auth)
+    ├── wwwroot/css/app.css         → The design system (tokens + components)
     └── Program.cs                  → App startup, DI registration, middleware pipeline
 ```
 
@@ -51,19 +56,53 @@ Gym_Managment_System/
 - The **Service** layer implements business rules against the abstractions, never against EF Core directly.
 - The **MVC** layer never touches the database or entities directly — it only knows about DTOs and service interfaces.
 - **DTOs** live in a shared project so the Domain entities never leak outside the Core.
+- **Identity** lives in Infrastructure, where the framework dependency belongs; the Core knows nothing about it.
 
 ---
 
 ## 🧩 Design Patterns & Techniques
 
-- **Repository + Unit of Work** — a generic repository (`IGenericRepository<T>`) plus specific repositories (Plan, Session) coordinated through a single `IUnitOfWork`, so every request commits as one atomic operation.
-- **Specification Pattern** — encapsulates filtering/including/ordering logic (e.g. `MemberWithHealthRecordSpecification`, `MemberWitSessionSpecification`) so repositories stay generic and query logic stays testable and reusable.
-- **Service Manager Pattern** — a single `IServiceManger` exposes `MemberService`, `TrainerService`, `PlanService`, `SessionService`, and `AnalyticsService`, so controllers depend on one entry point instead of five separate services.
+- **Repository + Unit of Work** — a generic repository (`IGenericRepository<T>`) plus specific repositories (Plan, Session, Membership, Booking) coordinated through a single `IUnitOfWork`, so every request commits as one atomic operation.
+- **Specification Pattern** — encapsulates filtering/including logic (e.g. `MemberWithHealthRecordSpecification`) so repositories stay generic and query logic stays testable and reusable.
+- **Service Manager Pattern** — a single `IServiceManger` exposes every service, so controllers depend on one entry point instead of seven.
 - **DTO Pattern** — dedicated DTOs per operation (e.g. `CreateMemberDTO`, `MemberToUpdateDTO`, `MemberDetailsDTO`) instead of exposing entities to the views.
-- **AutoMapper** — maps entities ↔ DTOs through dedicated profiles (`MemberProfile`, `TrainerProfile`, `PlanProfile`, `SessionProfile`).
+- **Result tuples for business outcomes** — the Membership and Booking services return `(bool Success, string Message)` so the UI can explain *why* an action was refused instead of showing a generic failure.
+- **AutoMapper** — maps entities ↔ DTOs through dedicated profiles per module.
 - **Fluent API Configurations** — each entity has its own `IEntityTypeConfiguration<T>` class instead of data annotations, keeping the entities clean.
-- **Attachment Service** — a standalone service (`IAttachmentService`) responsible for uploading and deleting files (used for member/trainer photos), decoupled from the rest of the business logic.
-- **DB Initializer** — seeds the database on startup through `IDbInitilazer`, applying pending migrations automatically.
+- **Attachment Service** — a standalone `IAttachmentService` responsible for storing and deleting uploaded photos, declared in terms of `Stream` so the Core stays free of web-framework types.
+- **DB Initializer** — applies pending migrations on startup, seeds reference data, roles and the bootstrap admin through `IDbInitilazer`.
+
+---
+
+## 🔐 Authentication & Authorization
+
+Built on **ASP.NET Core Identity** with cookie authentication and a **fallback authorization policy** — every page requires a signed-in user unless it is explicitly marked `[AllowAnonymous]`.
+
+**Roles**
+
+| Role | Can do |
+|---|---|
+| **Admin** | Everything: create, edit and delete across every module. |
+| **Trainer** | Read the gym records and the timetable; book and release class seats. |
+| **Member** | Browse plans and the weekly class schedule. |
+
+**How it is enforced**
+- Named policies (`AppPolicies.AdminOnly`, `AppPolicies.StaffOnly`) instead of role strings scattered through the controllers.
+- Role names live in `AppRoles` constants, so a typo becomes a compile error rather than a silent lockout.
+- Every state-changing POST carries an anti-forgery token.
+- Self-registration always lands in the least-privileged **Member** role; staff roles are granted by an administrator.
+- Login failures give one message for both an unknown email and a wrong password, so the form can't be used to discover registered addresses. Accounts lock for 10 minutes after 5 failed attempts.
+- Return URLs are validated with `Url.IsLocalUrl`, so `?returnUrl=` can't be turned into an open redirect.
+
+**Bootstrap admin.** On first run the initializer seeds an administrator from configuration. The password is deliberately **blank in `appsettings.json`** — supply it per environment:
+
+```bash
+dotnet user-secrets set "Seed:AdminPassword" "<a strong password>" --project GMS.MVC
+# or
+export Seed__AdminPassword="<a strong password>"
+```
+
+If it is not set, the app logs a warning and seeds no admin. In **Development**, `appsettings.Development.json` supplies `Admin@123` for `admin@powerfitness.com` so a fresh clone can be signed into immediately — change it before deploying anywhere real.
 
 ---
 
@@ -71,87 +110,131 @@ Gym_Managment_System/
 
 **Base entities**
 - `BaseEntity` — `Id`, `CreatedAt`, `UpdatedAt` (inherited by every entity).
-- `GymUser` (abstract) — shared identity fields for people in the system: `Name`, `Email`, `Phone`, `DateOfBirth`, `Gender`, `Address`. Inherited by both `Member` and `Trainer`.
+- `GymUser` (abstract) — shared identity fields: `Name`, `Email`, `Phone`, `DateOfBirth`, `Gender`, `Address`. Inherited by both `Member` and `Trainer`.
+- `AppUser` (Identity) — the login account, deliberately separate from `Member`/`Trainer`: a person can exist in the gym records without ever signing in, and an admin account has no gym record at all.
 
 **Core entities**
-- **Member** *(inherits GymUser)* — has a `Photo`, one `HealthRecord`, and many `MemberSession` bookings.
-- **Trainer** *(inherits GymUser)* — has a `Specialties` enum value and many `Session`s they lead.
-- **HealthRecord** — `Height`, `Weight`, `BloodType`, optional `Note`.
+- **Member** *(inherits GymUser)* — has a `Photo`, one `HealthRecord`, many `MemberSession` bookings and many `MemberShip` contracts.
+- **Trainer** *(inherits GymUser)* — has a `Specialties` value, a `Photo` and many `Session`s they lead.
+- **HealthRecord** — `Height`, `Weight`, `BloodType`, optional `Note`. BMI is derived, never stored.
 - **Category** — groups sessions (e.g. Boxing, CrossFit).
 - **Session** — `Description`, `Capacity`, `StartDate`, `EndDate`, linked to one `Category` and one `Trainer`.
 - **Plan** — `Name`, `Description`, `DurationDays`, `Price`, `IsActive` toggle.
-- **MemberShip** — the contract between a `Member` and a `Plan`: `EndDate` and a computed `Status` (`Active` / `Expired`, based on `EndDate` vs. now).
+- **MemberShip** — the contract between a `Member` and a `Plan`: `StartDate`, `EndDate`, `PricePaid`, and a computed `Status` (`Active` / `Expired`).
 - **MemberSession** — the booking record linking a `Member` to a `Session`.
 
-**Enums**
-- `Gender` — Male / Female.
-- `BloodType` — all 8 blood types (A+, A-, B+, B-, AB+, AB-, O+, O-).
-- `Specialties` — 11 trainer specialties (General Fitness, Weight Loss & Fat Burning, Bodybuilding, Powerlifting, Cardio, CrossFit, Rehabilitation, Sports Performance, Nutrition Coaching, Youth Fitness, Seniors Fitness).
+**Enums** — `Gender`, `BloodType` (8 types), `Specialties` (11 specialties).
 
 **Business rules captured in the model**
-- A session's status (Upcoming / Ongoing / Completed) is derived from comparing `StartDate`/`EndDate` to the current time — not stored as a static flag.
-- A membership's `Active`/`Expired` status is computed on the fly from `EndDate`, so it's always accurate.
-- Sessions have a bounded `Capacity`, enforced at the booking (`MemberSession`) level.
+- A session's status (Upcoming / Ongoing / Completed) is derived from comparing `StartDate`/`EndDate` to the current time — never stored as a static flag.
+- A membership's `Active`/`Expired` status is computed on the fly from `EndDate`, so it is always accurate.
+- A membership's `EndDate` is always derived from the plan's duration — a contract cannot outlive what was paid for.
+- `PricePaid` is copied onto the contract at sale time, so a later price change never rewrites what a member paid.
+- A renewal is recorded as a **new** contract rather than an edit, so subscription history stays intact.
+- Sessions have a bounded `Capacity`, enforced at the booking level.
+- A unique index on `(MemberId, SessionId)` means the database itself refuses a double booking, so a race between two requests can't slip past the service-level check.
+
+**Booking rules** — every booking is validated against four rules: the class must still be in the future, it must have a free seat, the member must hold a live membership covering that date, and they must not already be booked into an overlapping class. The booking dropdown only offers members who pass all four, so it never presents a choice that would be rejected on submit.
 
 ---
 
-## 🛠️ Tech Stack
+## 🎨 The UI
 
-- **.NET 8** / **ASP.NET Core MVC**
-- **Entity Framework Core 8** (Code-First, Fluent API, Migrations)
-- **SQL Server**
-- **AutoMapper**
-- **Razor Views** with Tag Helpers, partial views, and a shared `_Layout`
-- **Bootstrap** for the UI
+A single design system in `wwwroot/css/app.css` — CSS custom properties for colour, type, spacing, radius, shadow and motion, then components built on those tokens: the app shell, cards, stat tiles, data tables, status pills, avatars, forms, toasts, empty states, meters and the weekly timetable grid.
+
+- **Three layouts** — `_Layout` (the back-office shell with a dark sidebar), `_PublicLayout` (marketing pages) and `_AuthLayout` (split-screen sign-in).
+- **Light and dark themes** — the toggle re-points the same tokens, so no component knows which theme it is in. The choice is stored per browser and applied before first paint, so there is no flash of the wrong theme.
+- **Responsive** — the sidebar collapses to an overlay under 860px, the timetable reflows from seven columns to one, and tables scroll inside their own container rather than the page.
+- **Accessible** — visible focus rings, `aria-label`s on icon-only controls, semantic headings, and a `prefers-reduced-motion` block that disables animation.
+- **No chart library** — the two dashboard charts are drawn from the data as plain elements; two small shapes don't justify a dependency.
 
 ---
 
 ## 📊 Analytics Dashboard
 
-The `AnalyticsService` computes live statistics on every dashboard load, straight from the database, with no cached or static values:
+The `AnalyticsService` computes every figure live from the database on each dashboard load:
 
-- Active members (based on membership `EndDate`)
-- Total members
-- Total trainers
-- Upcoming sessions
-- Ongoing sessions
-- Completed sessions
+- Members: total, active (people, not contracts — a renewal must not count twice), new this month
+- Trainers and their workload
+- Sessions: upcoming, ongoing, completed, and total bookings
+- Memberships: active, expired and expiring within 7 days
+- Revenue: total and this month
+- Plan distribution across live contracts, and booking activity per day for the coming week
+
+---
+
+## 🛠️ Tech Stack
+
+- **.NET 10** / **ASP.NET Core MVC**
+- **Entity Framework Core 10** (Code-First, Fluent API, Migrations)
+- **ASP.NET Core Identity**
+- **SQL Server**
+- **AutoMapper**
+- **Razor Views** with tag helpers, partial views and shared layouts
+- **Bootstrap 5** grid and dropdowns, with a custom design system on top
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - SQL Server (local or containerized)
+
+### Run it
+
+```bash
+# 1. A SQL Server to point at (skip if you already have one)
+docker run -d --name gymsql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='<strong password>' \
+  -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
+
+# 2. Point the app at it (or edit ConnectionStrings:DefaultConnections)
+export ConnectionStrings__DefaultConnections="Server=localhost,1433;Database=GymManagmentSystem;User Id=sa;Password=<strong password>;TrustServerCertificate=True;"
+
+# 3. Run — migrations are applied and reference data seeded on startup
+dotnet run --project GMS.MVC
+```
+
+Then sign in at `/Account/Login`. In Development the seeded administrator is `admin@powerfitness.com` / `Admin@123`.
+
+### Seeding
+
+The `Seed` configuration section controls startup seeding:
+
+| Key | Purpose |
+|---|---|
+| `Seed:AdminEmail` | Email for the bootstrap administrator. |
+| `Seed:AdminPassword` | Its password. **Blank in `appsettings.json` on purpose** — supply per environment. |
+| `Seed:AdminFullName` | Display name for that account. |
+| `Seed:SeedDemoData` | When `true` (Development default), seeds sample trainers, members, memberships, sessions and bookings on an empty database, so a fresh clone shows a populated dashboard instead of six zeroes. |
+
+Categories and plans are always seeded from `wwwroot/Data/*.json` when their tables are empty.
+
+---
 
 ## 🧭 Modules & Controllers
 
-| Controller | Responsibilities |
-|---|---|
-| `HomeController` | Dashboard with live analytics |
-| `MembersController` | List, register, view details, view health record, edit, and delete members |
-| `TrainersController` | List, register, view details, edit, and delete trainers |
-| `PlansController` | List plans, view details, edit, and toggle plan active status |
-| `SessionController` | List, create, view details, edit, and delete sessions; populates trainer/category dropdowns |
+| Controller | Responsibilities | Access |
+|---|---|---|
+| `HomeController` | Public landing page, privacy, friendly error/status pages | Anonymous |
+| `AccountController` | Login, register, logout, profile, change password, access denied | Mixed |
+| `DashboardController` | Live analytics dashboard | Staff |
+| `MembersController` | List (search + status filter), create, details, health record, edit, delete; photo upload | Staff reads, Admin writes |
+| `TrainersController` | List (search + specialty filter), create, details, edit, delete; photo upload | Staff reads, Admin writes |
+| `SessionController` | List (search + status filter), create, details, edit, delete | Staff reads, Admin writes |
+| `PlansController` | List, details, edit, activate/deactivate | All read, Admin writes |
+| `MembershipsController` | List (search + status filter), create, details, renew, cancel | Staff reads, Admin writes |
+| `SessionsScheduleController` | Weekly timetable, class roster, book a seat, release a seat | All read, Staff books |
 
 ---
-
-## 🔒 What's Not Included (By Design)
-
-- **Authentication & Authorization** (ASP.NET Core Identity, role-based access, login/logout, access-denied handling) — deliberately left out of this build since it's a flow that's already been implemented extensively in prior projects. The app currently runs without a login wall.
-
----
-
-> ⚠️ **Note:** This project intentionally does **not** include an Authentication & Authorization module (ASP.NET Core Identity, roles, login/logout). That module was skipped on purpose since it had already been implemented multiple times in previous projects — the focus here is on the domain, architecture, and business logic instead.
 
 ## 📌 Possible Next Steps
 
-- Add ASP.NET Core Identity with role-based access (Admin / Trainer / Member)
-- Add unit tests for the Service layer
-- Add API endpoints alongside the MVC views
-- Add pagination & search/filtering across list views
-- Add session capacity validation and double-booking prevention at the service layer
+- Link `AppUser` accounts to their `Member` / `Trainer` record so members can book their own classes
+- Unit tests for the Service layer
+- API endpoints alongside the MVC views
+- Pagination on the list views (search and filtering are in place)
+- Email notifications for expiring memberships and booking confirmations
 
 ---
 

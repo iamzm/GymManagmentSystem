@@ -1,6 +1,43 @@
 ﻿@{
     ViewData["Title"] = "Privacy Policy";
+    Layout = "_PublicLayout";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<section class="container py-5" style="max-width:760px">
+    <span class="section-eyebrow"><i class="bi bi-shield-check"></i> Legal</span>
+    <h1 class="section-title">Privacy Policy</h1>
+    <p class="text-muted-2">Last updated @DateTime.Now.ToString("MMMM yyyy")</p>
+
+    <div class="card-app mt-4">
+        <div class="card-app__body">
+            <h2 class="h5">What we store</h2>
+            <p class="text-muted-2">
+                Power Fitness keeps the details you give us when you join: your name, contact
+                details, date of birth, address, and the health record your trainer needs to
+                program safely — height, weight, blood type and any notes you share.
+            </p>
+
+            <h2 class="h5 mt-4">Why we store it</h2>
+            <p class="text-muted-2">
+                Your record exists so we can run your membership, book you into classes, and
+                coach you safely. We do not sell it and we do not share it with advertisers.
+            </p>
+
+            <h2 class="h5 mt-4">Who can see it</h2>
+            <p class="text-muted-2">
+                Access is limited by role. Administrators manage records, trainers read the
+                information needed to run their classes, and members see their own details.
+            </p>
+
+            <h2 class="h5 mt-4">Your choices</h2>
+            <p class="text-muted-2">
+                Ask us at any time to correct your details or close your account, and we will
+                remove your personal record from the system.
+            </p>
+        </div>
+    </div>
+
+    <a class="btn-app btn-app--ghost mt-4" asp-controller="Home" asp-action="Index">
+        <i class="bi bi-arrow-left"></i> Back to Home
+    </a>
+</section>

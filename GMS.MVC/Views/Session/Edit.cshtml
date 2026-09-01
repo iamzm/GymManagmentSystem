@@ -1,84 +1,82 @@
 ﻿@model UpdateSessionDTO
+@{
+    ViewData["Title"] = "Edit Session";
+    ViewData["Crumb"] = "Change a scheduled class";
+}
 
-<div class="container mt-4">
-    <header class="mb-4">
-        <h3 class="text-primary-color">Edit Session</h3>
-        <p class="text-muted">Update Session Information</p>
-    </header>
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations · Sessions</div>
+        <h1 class="page-head__title">Edit session</h1>
+        <p class="page-head__sub">Only classes that haven't started and have no bookings can be changed.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
 
-    @Html.ValidationMessage("DataInvalid", new { @class = "text-danger" })
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-8">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
 
-    <form asp-action="Edit" method="post">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-4">
+                <form asp-action="Edit" asp-route-id="@Model.Id" method="post" novalidate>
+                    <input type="hidden" asp-for="Id" />
 
-                        <input hidden readonly asp-for="CategoryId" value="@Model.CategoryId" />
-
-                        <!-- Session Information -->
-                        <div class="section-header mb-3">
-                            <h5 class="text-primary fw-bold">Session Information</h5>
-                            <hr class="mt-2">
-                        </div>
-
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label asp-for="TrainerId" class="form-label fw-semibold">
-                                    Trainer <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="TrainerId" asp-items="@ViewBag.Trainers" class="form-select">
-                                    <option value=""> --- Select Trainer --- </option>
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-info-circle"></i> Session information</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label asp-for="CategoryId">Category <span class="req">*</span></label>
+                                <select asp-for="CategoryId" asp-items="@ViewBag.Categories" class="form-select">
+                                    <option value="">Select a category…</option>
                                 </select>
-                                <span asp-validation-for="TrainerId" class="text-danger"></span>
+                                <span asp-validation-for="CategoryId"></span>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label asp-for="TrainerId">Trainer <span class="req">*</span></label>
+                                <select asp-for="TrainerId" asp-items="@ViewBag.Trainers" class="form-select">
+                                    <option value="">Select a trainer…</option>
+                                </select>
+                                <span asp-validation-for="TrainerId"></span>
                             </div>
 
                             <div class="col-12">
-                                <label asp-for="Description" class="form-label fw-semibold">
-                                    Description <span class="text-danger">*</span>
-                                </label>
+                                <label asp-for="Description">Description <span class="req">*</span></label>
                                 <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                                <span asp-validation-for="Description" class="text-danger"></span>
+                                <span asp-validation-for="Description"></span>
                             </div>
-                        </div>
-
-                        <!-- Date & Time -->
-                        <div class="section-header mb-3">
-                            <h5 class="text-primary fw-bold">Date & Time</h5>
-                            <hr class="mt-2">
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label asp-for="StartDate" class="form-label fw-semibold">
-                                    Start Date & Time <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="StartDate" type="datetime-local" class="form-control" />
-                                <span asp-validation-for="StartDate" class="text-danger"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="EndDate" class="form-label fw-semibold">
-                                    End Date & Time <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="EndDate" type="datetime-local" class="form-control" />
-                                <span asp-validation-for="EndDate" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                            <a asp-action="Index" class="btn btn-outline">
-                                <i class="bi bi-arrow-left me-1"></i>Cancel
-                            </a>
-                            <button type="submit" class="btn btn-fill">
-                                <i class="bi bi-check-lg me-1"></i>Update Session
-                            </button>
                         </div>
                     </div>
-                </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-clock"></i> Date &amp; time</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label asp-for="StartDate">Starts <span class="req">*</span></label>
+                                <input asp-for="StartDate" type="datetime-local" class="form-control" data-session-start />
+                                <span asp-validation-for="StartDate"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="EndDate">Ends <span class="req">*</span></label>
+                                <input asp-for="EndDate" type="datetime-local" class="form-control" data-session-end />
+                                <span asp-validation-for="EndDate"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" class="btn-app btn-app--primary">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    </form>
+    </div>
 </div>
 
 @section Scripts {

@@ -1,0 +1,17 @@
+﻿@model AvatarModel
+@{
+    var sizeClass = Model.Size switch {
+        "sm" => "avatar-app--sm",
+        "lg" => "avatar-app--lg",
+        "xl" => "avatar-app--xl",
+        _ => ""
+    };
+}
+<span class="avatar-app @sizeClass" title="@Model.Name">
+    @if (!string.IsNullOrWhiteSpace(Model.Photo)) {
+        <img src="~/uploads/@Model.Folder/@Model.Photo" alt="@Model.Name" />
+    }
+    else {
+        @Model.Initials
+    }
+</span>

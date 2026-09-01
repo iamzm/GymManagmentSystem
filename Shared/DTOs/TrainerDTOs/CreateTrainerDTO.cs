@@ -43,5 +43,9 @@ namespace Shared.DTOs.TrainerDTOs {
 		[Required(ErrorMessage = "Specialty is Required")]
 		[EnumDataType(typeof(Specialties))]
 		public Specialties Specialties { get; set; }
+
+		/// <summary>File Name Of The Uploaded Profile Photo, Set By The Controller After The
+		/// Attachment Service Has Stored It. Not Posted Directly By The Browser.</summary>
+		public string? Photo { get; set; }
 	}
 }

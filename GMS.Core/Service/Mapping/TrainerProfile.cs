@@ -2,11 +2,7 @@
 using Domin.Entities;
 using Domin.GymEntities;
 using Shared.DTOs.TrainerDTOs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Shared.Extensions;
 
 namespace Services.Mapping {
     public class TrainerProfile : Profile {
@@ -19,20 +15,22 @@ namespace Services.Mapping {
                     City = src.City
                 }));
 
-            CreateMap<Trainer, TrainerDTO>();
+            CreateMap<Trainer, TrainerDTO>()
+                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender.GetDisplayName()))
+                .ForMember(dest => dest.Specialties, opt => opt.MapFrom(src => src.Specialties.GetDisplayName()))
+                .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth.ToString("MMM dd, yyyy")))
+                .ForMember(dest => dest.Address, opt => opt.MapFrom(src =>
+                    $"({src.Address.BuildingNumber}) {src.Address.Street}, {src.Address.City}"))
+                // HireDate Is Stored In CreatedAt.
+                .ForMember(dest => dest.HiredOn, opt => opt.MapFrom(src => src.CreatedAt))
+                // Session Counts Are Filled In By The Service.
+                .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
+                .ForMember(dest => dest.UpcomingSessionCount, opt => opt.Ignore());
 
             CreateMap<Trainer, TrainerToUpdateDTO>()
                 .ForMember(dist => dist.Street, opt => opt.MapFrom(src => src.Address.Street))
                 .ForMember(dist => dist.City, opt => opt.MapFrom(src => src.Address.City))
                 .ForMember(dist => dist.BuildingNumber, opt => opt.MapFrom(src => src.Address.BuildingNumber));
-
-            CreateMap<TrainerToUpdateDTO, Trainer>()
-                .ForMember(dest => dest.Name, opt => opt.Ignore())
-                .AfterMap((src, dest) => {
-                    dest.Address.BuildingNumber = src.BuildingNumber;
-                    dest.Address.City = src.City;
-                    dest.Address.Street = src.Street;
-            });
 
             CreateMap<Trainer, TrainerSelectDTO>();
         }

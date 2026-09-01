@@ -1,0 +1,3 @@
+# Uploaded profile photos are per-deployment data, not source. Keep the folders, ignore the files.
+*
+!.gitignore

@@ -1,0 +1,103 @@
+﻿@model ProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+    ViewData["Crumb"] = "Your account details and access level";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Account</div>
+        <h1 class="page-head__title">My Profile</h1>
+        <p class="page-head__sub">How you appear in Power Fitness, and what you're allowed to do.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="ChangePassword">
+            <i class="bi bi-key"></i> Change Password
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-4">
+        <div class="card-app">
+            <div class="card-app__body text-center">
+                <span class="avatar-app avatar-app--xl mb-3">@Model.Initials</span>
+                <h2 class="h4 mb-1">@Model.FullName</h2>
+                <p class="text-muted-2 mb-3">@Model.Email</p>
+                <span class="pill pill--brand"><i class="bi bi-shield-check"></i>@Model.Role</span>
+            </div>
+            <div class="card-app__foot text-center fs-14 text-muted-2">
+                <i class="bi bi-calendar3 me-1"></i> Joined @Model.CreatedAt.ToString("MMMM dd, yyyy")
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card-app">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-person-vcard"></i></span>
+                <div>
+                    <h2 class="card-app__title">Account details</h2>
+                    <p class="card-app__sub">Read-only. Ask an administrator to change your role.</p>
+                </div>
+            </div>
+            <div class="card-app__body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-item__label">Full Name</div>
+                        <div class="detail-item__value">@Model.FullName</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Email</div>
+                        <div class="detail-item__value">@Model.Email</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Role</div>
+                        <div class="detail-item__value">@Model.Role</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Member Since</div>
+                        <div class="detail-item__value">@Model.CreatedAt.ToString("MMM dd, yyyy")</div>
+                    </div>
+                    @if (Model.MemberId is not null) {
+                        <div class="detail-item">
+                            <div class="detail-item__label">Linked Member Record</div>
+                            <div class="detail-item__value">#@Model.MemberId</div>
+                        </div>
+                    }
+                    @if (Model.TrainerId is not null) {
+                        <div class="detail-item">
+                            <div class="detail-item__label">Linked Trainer Record</div>
+                            <div class="detail-item__value">#@Model.TrainerId</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card-app mt-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-shield-lock"></i></span>
+                <div>
+                    <h2 class="card-app__title">What your role can do</h2>
+                </div>
+            </div>
+            <div class="card-app__body">
+                <ul class="list-unstyled d-grid gap-3 mb-0">
+                    <li class="d-flex gap-3">
+                        <i class="bi bi-check-circle-fill" style="color:var(--ok-600)"></i>
+                        <span><strong>Administrator</strong> — full control: create, edit and delete across every module.</span>
+                    </li>
+                    <li class="d-flex gap-3">
+                        <i class="bi bi-eye-fill" style="color:var(--info-600)"></i>
+                        <span><strong>Trainer</strong> — read the gym records and the timetable, and manage class bookings.</span>
+                    </li>
+                    <li class="d-flex gap-3">
+                        <i class="bi bi-person-fill" style="color:var(--brand-600)"></i>
+                        <span><strong>Member</strong> — browse plans and the weekly class schedule.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

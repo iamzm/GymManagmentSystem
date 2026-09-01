@@ -1,0 +1,183 @@
+﻿@model SessionRosterDTO
+@{
+    ViewData["Title"] = "Class Roster";
+    ViewData["Crumb"] = $"{Model.CategoryName} · {Model.StartDate:MMM dd, HH:mm}";
+    var isStaff = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Trainer);
+    var bookableMembers = ViewBag.BookableMembers as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var hasBookableMembers = bookableMembers is not null && bookableMembers.Any();
+    var meterClass = Model.FillPercent >= 100 ? "meter--danger" : Model.FillPercent >= 75 ? "meter--warn" : "meter--ok";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Schedule · Roster</div>
+        <h1 class="page-head__title">@Model.CategoryName</h1>
+        <p class="page-head__sub">
+            @Model.StartDate.ToString("dddd, MMM dd, yyyy") ·
+            @Model.StartDate.ToString("HH:mm")–@Model.EndDate.ToString("HH:mm") ·
+            led by @Model.TrainerName
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to schedule</a>
+        <a class="btn-app btn-app--ghost" asp-controller="Session" asp-action="Details" asp-route-id="@Model.SessionId">
+            <i class="bi bi-info-circle"></i> Session details
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-4">
+        <div class="card-app mb-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-people"></i></span>
+                <div><h2 class="card-app__title">Seats</h2></div>
+                <span class="ms-auto"><partial name="_StatusPill" model="@Model.Status" /></span>
+            </div>
+            <div class="card-app__body text-center">
+                <div class="stat-tile__value">@Model.BookedSlots<span class="text-subtle fs-4"> / @Model.Capacity</span></div>
+                <div class="stat-tile__label mb-3">Booked</div>
+                <div class="meter @meterClass mb-2">
+                    <div class="meter__fill" style="width:@(Model.FillPercent)%"></div>
+                </div>
+                <div class="fs-14 text-muted-2">
+                    @if (Model.IsFull) {
+                        <span class="pill pill--danger"><i class="bi bi-slash-circle"></i>Fully booked</span>
+                    }
+                    else {
+                        <span><span class="mono-num fw-600">@Model.AvailableSlots</span> free</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (isStaff) {
+            <div class="card-app form-app">
+                <div class="card-app__head">
+                    <span class="icon-chip"><i class="bi bi-person-plus"></i></span>
+                    <div><h2 class="card-app__title">Book a member</h2></div>
+                </div>
+                <div class="card-app__body">
+                    @if (!Model.CanBook) {
+                        <div class="alert-app alert-app--warn mb-0">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <div>
+                                @if (Model.Status != "Upcoming") {
+                                    <span>This class has already started, so it's closed for new bookings.</span>
+                                }
+                                else {
+                                    <span>Every seat is taken. Cancel a booking to free one up.</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (!hasBookableMembers) {
+                        <div class="alert-app alert-app--info mb-0">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <div>
+                                Nobody is eligible right now. Members need a live membership covering
+                                this date, must not already be booked in, and must be free at this hour.
+                            </div>
+                        </div>
+                    }
+                    else {
+                        <form asp-action="Book" method="post">
+                            <input type="hidden" name="SessionId" value="@Model.SessionId" />
+
+                            <div class="mb-3">
+                                <label for="MemberId">Member <span class="req">*</span></label>
+                                <select name="MemberId" id="MemberId" asp-items="@bookableMembers" class="form-select">
+                                    <option value="">Select a member…</option>
+                                </select>
+                                <div class="field-hint">Only members eligible for this class are listed.</div>
+                            </div>
+
+                            <button type="submit" class="btn-app btn-app--primary btn-app--block">
+                                <i class="bi bi-bookmark-plus"></i> Book Seat
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card-app">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-list-check"></i></span>
+                <div>
+                    <h2 class="card-app__title">Who's booked</h2>
+                    <p class="card-app__sub">@Model.BookedSlots member@(Model.BookedSlots == 1 ? "" : "s") reserved a seat</p>
+                </div>
+            </div>
+            <div class="card-app__body p-0">
+                @if (Model.Bookings.Count > 0) {
+                    <div class="table-app-scroll">
+                        <table class="table-app">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Booked On</th>
+                                    @if (isStaff) {
+                                        <th class="col-actions">Action</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var booking in Model.Bookings) {
+                                    <tr>
+                                        <td>
+                                            <div class="identity">
+                                                <partial name="_Avatar" model="@(new AvatarModel { Name = booking.MemberName, Photo = booking.MemberPhoto, Folder = "members" })" />
+                                                <div class="min-width-0">
+                                                    <div class="identity__name">@booking.MemberName</div>
+                                                    <div class="identity__meta">@booking.MemberEmail</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-muted-2 mono-num fs-14">@booking.BookedOn.ToString("MMM dd, yyyy")</td>
+                                        @if (isStaff) {
+                                            <td class="col-actions">
+                                                @if (booking.CanCancel) {
+                                                    <form asp-action="CancelBooking" method="post" class="m-0"
+                                                          data-confirm="Release @booking.MemberName's seat in this class?">
+                                                        <input type="hidden" name="id" value="@booking.Id" />
+                                                        <input type="hidden" name="sessionId" value="@Model.SessionId" />
+                                                        <button type="submit" class="btn-app btn-app--danger btn-app--sm">
+                                                            <i class="bi bi-x-lg"></i> Release
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else {
+                                                    <span class="text-subtle fs-13">Class started</span>
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else {
+                    <div class="empty-state">
+                        <div class="empty-state__icon"><i class="bi bi-person-x"></i></div>
+                        <h3 class="empty-state__title">Nobody booked yet</h3>
+                        <p class="empty-state__text">All @Model.Capacity seats in this class are still available.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card-app mt-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-file-text"></i></span>
+                <div><h2 class="card-app__title">About this class</h2></div>
+            </div>
+            <div class="card-app__body">
+                <p class="mb-0">@Model.Description</p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,18 +1,17 @@
 ﻿using Domin.GymEntities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Presistence.Identity;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Presistence.Data {
-    public class GymDbContext : DbContext {
+    public class GymDbContext : IdentityDbContext<AppUser> {
 
         public GymDbContext(DbContextOptions<GymDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
+            // Identity's Own Mappings Must Be Applied First, Then Our Fluent Configurations.
+            base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }
 

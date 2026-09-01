@@ -3,7 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Shared.DTOs.TrainerDTOs { 
     public class TrainerToUpdateDTO {
-	public string? Name { get; set; }
+		public int Id { get; set; }
+
+		public string? Name { get; set; }
+
+		/// <summary>Existing Photo File Name; Replaced By The Controller Only When A New File Is Posted.</summary>
+		public string? Photo { get; set; }
 
 		[Required(ErrorMessage = "Email Is Required")]
 		[EmailAddress(ErrorMessage = "Invalid email format")]

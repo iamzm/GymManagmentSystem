@@ -1,0 +1,63 @@
+﻿@model MembershipDTO
+@{
+    ViewData["Title"] = "Cancel Membership";
+    ViewData["Crumb"] = "This cannot be undone";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-6">
+        <div class="card-app">
+            <div class="card-app__body text-center">
+                <div class="empty-state__icon" style="background:var(--danger-100);color:var(--danger-600)">
+                    <i class="bi bi-x-circle"></i>
+                </div>
+
+                <h1 class="h4 mb-2">Cancel this membership?</h1>
+                <p class="text-muted-2">
+                    The contract is removed from the subscription history. If @Model.MemberName has no
+                    other live contract, they won't be able to book classes until they're subscribed again.
+                </p>
+
+                <div class="my-4 p-3 rounded-3 text-start" style="background:var(--surface-sunken)">
+                    <div class="identity mb-3">
+                        <partial name="_Avatar" model="@(new AvatarModel { Name = Model.MemberName, Photo = Model.MemberPhoto, Folder = "members" })" />
+                        <div class="min-width-0">
+                            <div class="identity__name">@Model.MemberName</div>
+                            <div class="identity__meta">@Model.MemberEmail</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 fs-14">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted-2">Plan</span>
+                            <span class="fw-600">@Model.PlanName</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted-2">Period</span>
+                            <span class="fw-600 mono-num">@Model.StartDate.ToString("MMM dd") → @Model.EndDate.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted-2">Paid</span>
+                            <span class="fw-600 mono-num">@Model.PricePaid.ToString("N0") EGP</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.IsActive) {
+                    <div class="alert-app alert-app--warn text-start">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>This contract is still active for another @Model.DaysRemaining day@(Model.DaysRemaining == 1 ? "" : "s"). Consider renewing instead.</div>
+                    </div>
+                }
+
+                <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-flex gap-2 mt-4">
+                    @Html.AntiForgeryToken()
+                    <a class="btn-app btn-app--ghost flex-fill" asp-action="Index">Keep membership</a>
+                    <button type="submit" class="btn-app btn-app--danger-solid flex-fill">
+                        <i class="bi bi-x-circle"></i> Cancel membership
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

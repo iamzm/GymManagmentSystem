@@ -27,6 +27,22 @@ namespace Presistence.Repositories {
                                             .FirstOrDefaultAsync(X => X.Id == sessionId);
 
         public async Task<int> GetCountOfBookedSlotsAsync(int sessionId)
-            => await _dbContext.MemberSessions.CountAsync(X => X.SessionId == sessionId); 
+            => await _dbContext.MemberSessions.CountAsync(X => X.SessionId == sessionId);
+
+        public async Task<IEnumerable<Session>> GetSessionsInRangeAsync(DateTime from, DateTime to)
+            => await _dbContext.Sessions.Include(X => X.SessionTrainer)
+                                        .Include(X => X.SessionCategory)
+                                        .AsNoTracking()
+                                        .Where(X => X.StartDate >= from && X.StartDate < to)
+                                        .OrderBy(X => X.StartDate)
+                                        .ToListAsync();
+
+        public async Task<IEnumerable<Session>> GetTrainerSessionsAsync(int trainerId)
+            => await _dbContext.Sessions.Include(X => X.SessionTrainer)
+                                        .Include(X => X.SessionCategory)
+                                        .AsNoTracking()
+                                        .Where(X => X.TrainerId == trainerId)
+                                        .OrderByDescending(X => X.StartDate)
+                                        .ToListAsync();
     }
 }

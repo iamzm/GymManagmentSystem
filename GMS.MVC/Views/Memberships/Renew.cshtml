@@ -1,0 +1,96 @@
+﻿@model CreateMembershipDTO
+@{
+    ViewData["Title"] = "Renew Membership";
+    ViewData["Crumb"] = "Extend a subscription";
+    var membership = ViewBag.Membership as MembershipDetailsDTO;
+    var membershipId = ViewBag.MembershipId as int? ?? 0;
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations · Memberships</div>
+        <h1 class="page-head__title">Renew membership</h1>
+        <p class="page-head__sub">A renewal is recorded as a new contract, so the subscription history stays intact.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
+
+<div class="row justify-content-center g-4">
+    @if (membership is not null) {
+        <div class="col-12 col-lg-4">
+            <div class="card-app">
+                <div class="card-app__head">
+                    <span class="icon-chip"><i class="bi bi-receipt"></i></span>
+                    <div><h2 class="card-app__title">Current contract</h2></div>
+                </div>
+                <div class="card-app__body">
+                    <div class="identity mb-3">
+                        <partial name="_Avatar" model="@(new AvatarModel { Name = membership.MemberName, Photo = membership.MemberPhoto, Folder = "members" })" />
+                        <div class="min-width-0">
+                            <div class="identity__name">@membership.MemberName</div>
+                            <div class="identity__meta">@membership.MemberEmail</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 fs-14">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted-2">Plan</span>
+                            <span class="fw-600">@membership.PlanName</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted-2">Ends</span>
+                            <span class="fw-600 mono-num">@membership.EndDate.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted-2">Status</span>
+                            <partial name="_StatusPill" model="@membership.Status" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="col-12 col-lg-6">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
+
+                <form asp-action="Renew" asp-route-id="@membershipId" method="post" novalidate>
+                    <input type="hidden" asp-for="MemberId" />
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="PlanId">Plan <span class="req">*</span></label>
+                            <select asp-for="PlanId" asp-items="@ViewBag.Plans" class="form-select">
+                                <option value="">Select a plan…</option>
+                            </select>
+                            <div class="field-hint">Renew onto the same plan, or move the member up or down a tier.</div>
+                            <span asp-validation-for="PlanId"></span>
+                        </div>
+
+                        <div class="col-12 col-md-7">
+                            <label asp-for="StartDate">Renewal Starts <span class="req">*</span></label>
+                            <input asp-for="StartDate" type="date" class="form-control" />
+                            <div class="field-hint">Pre-filled to pick up the day the current contract ends.</div>
+                            <span asp-validation-for="StartDate"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" class="btn-app btn-app--primary">
+                            <i class="bi bi-arrow-repeat"></i> Renew Membership
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

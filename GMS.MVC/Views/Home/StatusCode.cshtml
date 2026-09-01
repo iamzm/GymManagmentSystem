@@ -1,0 +1,32 @@
+﻿@{
+    var code = ViewBag.Code as int? ?? 404;
+    var (title, message, icon) = code switch {
+        403 => ("Access denied", "Your account doesn't have permission to open that page.", "bi-shield-lock"),
+        404 => ("Page not found", "The page you were looking for doesn't exist, or it has moved.", "bi-compass"),
+        500 => ("Something went wrong", "An unexpected error occurred while handling your request.", "bi-exclamation-octagon"),
+        _ => ($"Error {code}", "Something didn't go to plan while handling your request.", "bi-exclamation-triangle")
+    };
+    ViewData["Title"] = title;
+    Layout = "_PublicLayout";
+}
+
+<section class="container py-5">
+    <div class="card-app" style="max-width:620px;margin-inline:auto">
+        <div class="empty-state">
+            <div class="empty-state__icon"><i class="bi @icon"></i></div>
+            <div class="pill pill--muted mb-3 mono-num">Error @code</div>
+            <h1 class="empty-state__title">@title</h1>
+            <p class="empty-state__text">@message</p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <a class="btn-app btn-app--primary" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-house"></i> Go Home
+                </a>
+                @if (User.Identity?.IsAuthenticated == true) {
+                    <a class="btn-app btn-app--ghost" asp-controller="Dashboard" asp-action="Index">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</section>

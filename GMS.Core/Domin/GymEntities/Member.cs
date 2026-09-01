@@ -1,9 +1,4 @@
 ﻿using Domin.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Domin.GymEntities {
     public class Member : GymUser {
@@ -15,5 +10,8 @@ namespace Domin.GymEntities {
 
         // Relationships Member - MemberSession
         public ICollection<MemberSession> MemberSession { get; set; } = null!;
+
+        // Relationships Member - MemberShip
+        public ICollection<MemberShip> MemberShips { get; set; } = null!;
     }
 }

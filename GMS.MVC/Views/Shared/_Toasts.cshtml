@@ -1,0 +1,32 @@
+﻿@* Flash messages raised by controllers via TempData, rendered once per request. *@
+@{
+    var success = TempData["SuccessMessage"] as string;
+    var error = TempData["ErrorMessage"] as string;
+    var info = TempData["InfoMessage"] as string;
+}
+
+@if (success is not null || error is not null || info is not null) {
+    <div class="toast-stack">
+        @if (success is not null) {
+            <div class="toast-app toast-app--ok" role="status">
+                <i class="bi bi-check-circle-fill toast-app__icon"></i>
+                <div class="toast-app__body">@success</div>
+                <button type="button" class="toast-app__close" aria-label="Dismiss"><i class="bi bi-x-lg"></i></button>
+            </div>
+        }
+        @if (error is not null) {
+            <div class="toast-app toast-app--danger" role="alert">
+                <i class="bi bi-exclamation-triangle-fill toast-app__icon"></i>
+                <div class="toast-app__body">@error</div>
+                <button type="button" class="toast-app__close" aria-label="Dismiss"><i class="bi bi-x-lg"></i></button>
+            </div>
+        }
+        @if (info is not null) {
+            <div class="toast-app toast-app--info" role="status">
+                <i class="bi bi-info-circle-fill toast-app__icon"></i>
+                <div class="toast-app__body">@info</div>
+                <button type="button" class="toast-app__close" aria-label="Dismiss"><i class="bi bi-x-lg"></i></button>
+            </div>
+        }
+    </div>
+}

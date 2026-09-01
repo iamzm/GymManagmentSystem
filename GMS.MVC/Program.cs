@@ -1,6 +1,10 @@
 using Domin.Contract;
+using GMS.MVC.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Presistence.Data;
+using Presistence.Identity;
 using Presistence.Repositories;
 using Services.Abstraction.Contract;
 using Services.Implmentations;
@@ -21,21 +25,68 @@ namespace GMS.MVC {
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnections"));
             });
 
+            // Seeding Options (Bootstrap Admin Credentials + Optional Demo Records)
+            var seedOptions = builder.Configuration.GetSection(SeedOptions.SectionName).Get<SeedOptions>() ?? new SeedOptions();
+            builder.Services.AddSingleton(seedOptions);
+
+            #region Identity
+            builder.Services.AddIdentity<AppUser, IdentityRole>(options => {
+                options.Password.RequireDigit = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredLength = 6;
+
+                options.User.RequireUniqueEmail = true;
+
+                // A Short Lockout After Repeated Failures Blunts Password Guessing.
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
+            })
+            .AddEntityFrameworkStores<GymDbContext>()
+            .AddDefaultTokenProviders();
+
+            builder.Services.ConfigureApplicationCookie(options => {
+                options.LoginPath = "/Account/Login";
+                options.LogoutPath = "/Account/Logout";
+                options.AccessDeniedPath = "/Account/AccessDenied";
+                options.ExpireTimeSpan = TimeSpan.FromHours(8);
+                options.SlidingExpiration = true;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+            });
+
+            builder.Services.AddAuthorization(options => {
+                // Anything Not Explicitly Opened Up With [AllowAnonymous] Requires A Signed-In User.
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+
+                options.AddPolicy(AppPolicies.AdminOnly, policy => policy.RequireRole(AppRoles.Admin));
+                options.AddPolicy(AppPolicies.StaffOnly, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Trainer));
+            });
+            #endregion
+
             // Allow DI To DbInitilazer 
             builder.Services.AddScoped<IDbInitilazer, DbInitilazer>();
 
             // Allow DI To UnitOfWork 
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-            // Allow DI To AnalyticsService
+            // Allow DI To The Service Manager (Members, Trainers, Plans, Sessions, Memberships, Bookings, Analytics)
             builder.Services.AddScoped<IServiceManger, ServiceManger>();
 
+            // Allow DI To The Attachment Service (Profile Photo Uploads)
+            builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
             // Add AutoMapper To Services
-            builder.Services.AddAutoMapper(M => M.AddProfile(new MemberProfile()));
-            builder.Services.AddAutoMapper(M => M.AddProfile(new PlanProfile()));
-            builder.Services.AddAutoMapper(M => M.AddProfile(new SessionProfile()));
-            builder.Services.AddAutoMapper(M => M.AddProfile(new TrainerProfile()));
+            builder.Services.AddAutoMapper(M => {
+                M.AddProfile(new MemberProfile());
+                M.AddProfile(new PlanProfile());
+                M.AddProfile(new SessionProfile());
+                M.AddProfile(new TrainerProfile());
+                M.AddProfile(new MembershipProfile());
+                M.AddProfile(new BookingProfile());
+            });
 
             #endregion
 
@@ -44,9 +95,10 @@ namespace GMS.MVC {
             #region Add Kestrel Middelware
 
             // Database Initilaizer
-            using var scope = app.Services.CreateScope();
-            var DbInitilaizer = scope.ServiceProvider.GetRequiredService<IDbInitilazer>();
-            await DbInitilaizer.InitilazeAsync();
+            using (var scope = app.Services.CreateScope()) {
+                var dbInitilaizer = scope.ServiceProvider.GetRequiredService<IDbInitilazer>();
+                await dbInitilaizer.InitilazeAsync();
+            }
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment()) {
@@ -55,11 +107,16 @@ namespace GMS.MVC {
                 app.UseHsts();
             }
 
+            // Renders The Friendly 404 / 403 Pages Instead Of A Blank Browser Error.
+            app.UseStatusCodePagesWithReExecute("/Home/StatusCode", "?code={0}");
+
             app.UseHttpsRedirection();
 
             app.UseStaticFiles();
 
             app.UseRouting();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 

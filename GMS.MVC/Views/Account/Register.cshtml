@@ -1,0 +1,58 @@
+﻿@model RegisterViewModel
+@{
+    ViewData["Title"] = "Create Account";
+    Layout = "_AuthLayout";
+}
+
+<div class="auth-card form-app">
+    <h1 class="auth-card__title">Create your account</h1>
+    <p class="auth-card__sub">Join Power Fitness and book your place in every class.</p>
+
+    <partial name="_ValidationSummary" />
+
+    <form asp-action="Register" method="post" novalidate>
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div class="mb-3">
+            <label asp-for="FullName"></label>
+            <input asp-for="FullName" class="form-control" autocomplete="name" placeholder="Jordan Fisher" />
+            <span asp-validation-for="FullName"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" class="form-control" autocomplete="username" placeholder="you@example.com" />
+            <span asp-validation-for="Email"></span>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" placeholder="••••••••" />
+                <span asp-validation-for="Password"></span>
+            </div>
+            <div class="col-12 col-sm-6">
+                <label asp-for="ConfirmPassword"></label>
+                <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="••••••••" />
+                <span asp-validation-for="ConfirmPassword"></span>
+            </div>
+        </div>
+
+        <div class="field-hint mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            At least 6 characters, with one uppercase letter and one digit.
+        </div>
+
+        <button type="submit" class="btn-app btn-app--primary btn-app--lg btn-app--block">
+            <i class="bi bi-person-plus"></i> Create Account
+        </button>
+    </form>
+
+    <p class="text-center mt-4 mb-0 text-muted-2">
+        Already a member? <a asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl" class="fw-600">Sign in</a>
+    </p>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

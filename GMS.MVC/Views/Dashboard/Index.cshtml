@@ -1,0 +1,351 @@
+﻿@model DashboardDTO
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["Crumb"] = $"Live gym overview · {DateTime.Now:dddd, MMM dd}";
+    var stats = Model.Stats;
+    var trendJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.BookingTrend.Select(P => new { label = P.Label, value = P.Value }));
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Overview</div>
+        <h1 class="page-head__title">Good to see you back</h1>
+        <p class="page-head__sub">Everything happening at Power Fitness right now, computed live from the database.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-controller="SessionsSchedule" asp-action="Index">
+            <i class="bi bi-calendar-week"></i> Weekly Schedule
+        </a>
+        @if (User.IsInRole(AppRoles.Admin)) {
+            <a class="btn-app btn-app--primary" asp-controller="Memberships" asp-action="Create">
+                <i class="bi bi-plus-lg"></i> New Membership
+            </a>
+        }
+    </div>
+</div>
+
+@* --- Headline numbers --- *@
+<div class="stat-grid mb-4">
+    <div class="stat-tile tile--brand">
+        <div class="stat-tile__icon"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-tile__value">@stats.TotalMembers</div>
+        <div class="stat-tile__label">Total Members</div>
+        <div class="stat-tile__meta">
+            <i class="bi bi-arrow-up-right"></i> @stats.NewMembersThisMonth joined this month
+        </div>
+    </div>
+
+    <div class="stat-tile tile--ok">
+        <div class="stat-tile__icon"><i class="bi bi-patch-check-fill"></i></div>
+        <div class="stat-tile__value">@stats.ActiveMembers</div>
+        <div class="stat-tile__label">Active Members</div>
+        <div class="stat-tile__meta">
+            <i class="bi bi-graph-up"></i> @stats.ActiveMemberPercent% of the member base
+        </div>
+    </div>
+
+    <div class="stat-tile tile--info">
+        <div class="stat-tile__icon"><i class="bi bi-person-badge-fill"></i></div>
+        <div class="stat-tile__value">@stats.TotalTrainers</div>
+        <div class="stat-tile__label">Trainers</div>
+        <div class="stat-tile__meta">
+            <i class="bi bi-activity"></i> @stats.TotalSessions sessions on record
+        </div>
+    </div>
+
+    <div class="stat-tile tile--accent">
+        <div class="stat-tile__icon"><i class="bi bi-cash-coin"></i></div>
+        <div class="stat-tile__value">@stats.TotalRevenue.ToString("N0")</div>
+        <div class="stat-tile__label">Total Revenue (EGP)</div>
+        <div class="stat-tile__meta">
+            <i class="bi bi-calendar3"></i> @stats.RevenueThisMonth.ToString("N0") EGP this month
+        </div>
+    </div>
+</div>
+
+@* --- Secondary numbers --- *@
+<div class="stat-grid mb-4">
+    <div class="stat-tile tile--info">
+        <div class="stat-tile__icon"><i class="bi bi-clock-history"></i></div>
+        <div class="stat-tile__value">@stats.UpcomingSessions</div>
+        <div class="stat-tile__label">Upcoming Sessions</div>
+    </div>
+
+    <div class="stat-tile tile--ok">
+        <div class="stat-tile__icon"><i class="bi bi-broadcast"></i></div>
+        <div class="stat-tile__value">@stats.OngoingSessions</div>
+        <div class="stat-tile__label">Running Right Now</div>
+    </div>
+
+    <div class="stat-tile tile--brand">
+        <div class="stat-tile__icon"><i class="bi bi-bookmark-check-fill"></i></div>
+        <div class="stat-tile__value">@stats.TotalBookings</div>
+        <div class="stat-tile__label">Class Bookings</div>
+    </div>
+
+    <div class="stat-tile @(stats.ExpiringSoon > 0 ? "tile--warn" : "tile--muted")">
+        <div class="stat-tile__icon"><i class="bi bi-hourglass-split"></i></div>
+        <div class="stat-tile__value">@stats.ExpiringSoon</div>
+        <div class="stat-tile__label">Expiring Within 7 Days</div>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    @* --- Booking activity --- *@
+    <div class="col-12 col-xl-7">
+        <div class="card-app h-100">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-bar-chart-line"></i></span>
+                <div>
+                    <h2 class="card-app__title">Booking activity</h2>
+                    <p class="card-app__sub">Seats reserved per day over the coming week</p>
+                </div>
+            </div>
+            <div class="card-app__body">
+                @if (Model.BookingTrend.Any(P => P.Value > 0)) {
+                    <div data-bar-chart="@trendJson"></div>
+                }
+                else {
+                    <div class="empty-state py-4">
+                        <div class="empty-state__icon"><i class="bi bi-bar-chart"></i></div>
+                        <h3 class="empty-state__title">No bookings yet this week</h3>
+                        <p class="empty-state__text">Once members reserve seats in upcoming classes, their activity shows up here.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* --- Plan distribution --- *@
+    <div class="col-12 col-xl-5">
+        <div class="card-app h-100">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-pie-chart"></i></span>
+                <div>
+                    <h2 class="card-app__title">Plan distribution</h2>
+                    <p class="card-app__sub">Where active subscriptions sit</p>
+                </div>
+            </div>
+            <div class="card-app__body">
+                @if (Model.PlanBreakdown.Count > 0) {
+                    <div class="d-grid gap-3">
+                        @foreach (var plan in Model.PlanBreakdown) {
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-600">@plan.PlanName</span>
+                                    <span class="fs-14 text-muted-2 mono-num">
+                                        @plan.MemberCount member@(plan.MemberCount == 1 ? "" : "s") · @plan.Percent%
+                                    </span>
+                                </div>
+                                <div class="meter">
+                                    <div class="meter__fill" style="width:@(plan.Percent)%"></div>
+                                </div>
+                                <div class="fs-13 text-subtle mt-1">@plan.Revenue.ToString("N0") EGP collected</div>
+                            </div>
+                        }
+                    </div>
+                }
+                else {
+                    <div class="empty-state py-4">
+                        <div class="empty-state__icon"><i class="bi bi-tags"></i></div>
+                        <h3 class="empty-state__title">No active subscriptions</h3>
+                        <p class="empty-state__text">Subscribe a member to a plan and the split appears here.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* --- Renewals due --- *@
+    <div class="col-12 col-xl-6">
+        <div class="card-app h-100">
+            <div class="card-app__head">
+                <span class="icon-chip" style="background:var(--warn-100);color:var(--warn-600)"><i class="bi bi-hourglass-split"></i></span>
+                <div>
+                    <h2 class="card-app__title">Renewals due</h2>
+                    <p class="card-app__sub">Memberships lapsing within seven days</p>
+                </div>
+                <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-controller="Memberships" asp-action="Index" asp-route-status="expiring">
+                    View all
+                </a>
+            </div>
+            <div class="card-app__body p-0">
+                @if (Model.ExpiringMemberships.Count > 0) {
+                    <div class="table-app-scroll">
+                        <table class="table-app">
+                            <tbody>
+                                @foreach (var membership in Model.ExpiringMemberships) {
+                                    <tr>
+                                        <td>
+                                            <div class="identity">
+                                                <partial name="_Avatar" model="@(new AvatarModel { Name = membership.MemberName, Photo = membership.MemberPhoto, Folder = "members", Size = "sm" })" />
+                                                <div class="min-width-0">
+                                                    <div class="identity__name">@membership.MemberName</div>
+                                                    <div class="identity__meta">@membership.PlanName</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="pill pill--warn"><i class="bi bi-clock"></i>@membership.DaysRemaining day@(membership.DaysRemaining == 1 ? "" : "s") left</span>
+                                        </td>
+                                        <td class="col-actions">
+                                            @if (User.IsInRole(AppRoles.Admin)) {
+                                                <a class="btn-app btn-app--soft btn-app--sm" asp-controller="Memberships" asp-action="Renew" asp-route-id="@membership.Id">
+                                                    <i class="bi bi-arrow-repeat"></i> Renew
+                                                </a>
+                                            }
+                                            else {
+                                                <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="Memberships" asp-action="Details" asp-route-id="@membership.Id">
+                                                    View
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else {
+                    <div class="empty-state py-4">
+                        <div class="empty-state__icon" style="background:var(--ok-100);color:var(--ok-600)"><i class="bi bi-check2-circle"></i></div>
+                        <h3 class="empty-state__title">Nothing lapsing soon</h3>
+                        <p class="empty-state__text">Every active membership runs for more than another week.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* --- Next sessions --- *@
+    <div class="col-12 col-xl-6">
+        <div class="card-app h-100">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-calendar-event"></i></span>
+                <div>
+                    <h2 class="card-app__title">Next up</h2>
+                    <p class="card-app__sub">Classes starting soon</p>
+                </div>
+                <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-controller="SessionsSchedule" asp-action="Index">
+                    Schedule
+                </a>
+            </div>
+            <div class="card-app__body p-0">
+                @if (Model.NextSessions.Count > 0) {
+                    <div class="table-app-scroll">
+                        <table class="table-app">
+                            <tbody>
+                                @foreach (var session in Model.NextSessions) {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-600">@session.CategoryName</div>
+                                            <div class="identity__meta">
+                                                <i class="bi bi-person me-1"></i>@session.TrainerName
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fs-14 fw-600 mono-num">@session.StartDate.ToString("ddd, MMM dd")</div>
+                                            <div class="fs-13 text-muted-2 mono-num">@session.TimeRange</div>
+                                        </td>
+                                        <td style="min-width:120px">
+                                            <div class="fs-13 text-muted-2 mb-1">@session.BookedSlots / @session.Capacity seats</div>
+                                            <div class="meter @(session.FillPercent >= 100 ? "meter--danger" : session.FillPercent >= 75 ? "meter--warn" : "meter--ok")">
+                                                <div class="meter__fill" style="width:@(session.FillPercent)%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="col-actions">
+                                            <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="SessionsSchedule" asp-action="Roster" asp-route-id="@session.SessionId">
+                                                Roster
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else {
+                    <div class="empty-state py-4">
+                        <div class="empty-state__icon"><i class="bi bi-calendar-x"></i></div>
+                        <h3 class="empty-state__title">No classes scheduled</h3>
+                        <p class="empty-state__text">Nothing is booked into the next seven days.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* --- Recent members --- *@
+    <div class="col-12">
+        <div class="card-app">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-person-plus"></i></span>
+                <div>
+                    <h2 class="card-app__title">Newest members</h2>
+                    <p class="card-app__sub">The latest people to join the gym</p>
+                </div>
+                <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-controller="Members" asp-action="Index">
+                    All members
+                </a>
+            </div>
+            <div class="card-app__body p-0">
+                @if (Model.RecentMembers.Count > 0) {
+                    <div class="table-app-scroll">
+                        <table class="table-app">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Email</th>
+                                    <th>Plan</th>
+                                    <th>Joined</th>
+                                    <th class="col-actions">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var member in Model.RecentMembers) {
+                                    <tr>
+                                        <td>
+                                            <div class="identity">
+                                                <partial name="_Avatar" model="@(new AvatarModel { Name = member.Name, Photo = member.Photo, Folder = "members", Size = "sm" })" />
+                                                <div class="identity__name">@member.Name</div>
+                                            </div>
+                                        </td>
+                                        <td class="text-muted-2">@member.Email</td>
+                                        <td>
+                                            @if (member.PlanName is not null) {
+                                                <span class="pill pill--brand"><i class="bi bi-tag"></i>@member.PlanName</span>
+                                            }
+                                            else {
+                                                <span class="pill pill--outline"><i class="bi bi-dash-circle"></i>No plan</span>
+                                            }
+                                        </td>
+                                        <td class="text-muted-2 mono-num">@member.JoinedOn.ToString("MMM dd, yyyy")</td>
+                                        <td class="col-actions">
+                                            <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="Members" asp-action="MemberDetails" asp-route-id="@member.Id">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else {
+                    <div class="empty-state">
+                        <div class="empty-state__icon"><i class="bi bi-people"></i></div>
+                        <h3 class="empty-state__title">No members yet</h3>
+                        <p class="empty-state__text">Add your first member to start tracking subscriptions and bookings.</p>
+                        @if (User.IsInRole(AppRoles.Admin)) {
+                            <a class="btn-app btn-app--primary" asp-controller="Members" asp-action="Create">
+                                <i class="bi bi-person-plus"></i> Add Member
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

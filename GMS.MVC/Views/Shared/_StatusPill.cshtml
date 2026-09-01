@@ -1,0 +1,16 @@
+﻿@model string
+@{
+    // One place decides what colour a status word gets, so the whole app agrees.
+    var (css, icon) = Model switch {
+        "Active" => ("pill--ok", "bi-check-circle-fill"),
+        "Ongoing" => ("pill--ok", "bi-broadcast"),
+        "Upcoming" => ("pill--info", "bi-clock"),
+        "Completed" => ("pill--muted", "bi-check2-all"),
+        "Expired" => ("pill--danger", "bi-x-circle-fill"),
+        "Expiring" => ("pill--warn", "bi-hourglass-split"),
+        "No Plan" => ("pill--outline", "bi-dash-circle"),
+        "Inactive" => ("pill--muted", "bi-pause-circle"),
+        _ => ("pill--muted", "bi-circle")
+    };
+}
+<span class="pill @css"><i class="bi @icon"></i>@Model</span>

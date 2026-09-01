@@ -1,75 +1,224 @@
 ﻿@model MemberDetailsDTO
+@{
+    ViewData["Title"] = Model.Name;
+    ViewData["Crumb"] = "Member profile";
+    var memberships = ViewBag.Memberships as IEnumerable<MembershipDTO> ?? [];
+    var bookings = (ViewBag.Bookings as IEnumerable<BookingDTO> ?? []).ToList();
+    var isAdmin = User.IsInRole(AppRoles.Admin);
+    var status = Model.HasActivePlan ? "Active" : "No Plan";
+}
 
-<div class="card card-details border-0 p-2 shadow">
-    <div class="text-center mt-3">
-
-        @if (@Model.Photo is not null) {
-            <img src="~/images/@Model.Photo" alt="MemberName" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #fff; margin-top: -60px;" />
-        }
-        else {
-            <img src="~/images/User.png" alt="MemberName" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #fff; margin-top: -60px;" />
-        }
-
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">People · Members</div>
+        <h1 class="page-head__title">@Model.Name</h1>
+        <p class="page-head__sub">Member #@Model.Id · joined @Model.JoinedOn.ToString("MMMM dd, yyyy")</p>
     </div>
-    <div class="card-body text-center">
-        <h2 class="mb-1 text-primary-color">@Model.Name</h2>
-        <h4 class="mb-2 pb-1 border-bottom d-block">
-            @(Model.PlanName ?? "No Active Plan")
-        </h4>
-        <div class="mt-4 text-start">
-            <div class="row g-3">
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+        @if (isAdmin) {
+            <a class="btn-app btn-app--ghost" asp-controller="Memberships" asp-action="Create" asp-route-memberId="@Model.Id">
+                <i class="bi bi-card-checklist"></i> New membership
+            </a>
+            <a class="btn-app btn-app--primary" asp-action="EditMember" asp-route-id="@Model.Id">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+        }
+    </div>
+</div>
 
-                <div class="col-12">
-                    <div class="p-3 bg-light rounded">
-                        <small class="text-muted d-block mb-1">@nameof(Model.Email)</small>
-                        <strong>@Model.Email</strong>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="p-3 bg-light rounded">
-                        <small class="text-muted d-block mb-1">@nameof(Model.Phone)</small>
-                        <strong>@Model.Phone</strong>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="p-3 bg-light rounded">
-                        <small class="text-muted d-block mb-1">@nameof(Model.Gender)</small>
-                        <strong>@Model.Gender</strong>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="p-3 bg-light rounded">
-                        <small class="text-muted d-block mb-1">@nameof(Model.DateOfBirth)</small>
-                        <strong>@Model.DateOfBirth</strong>
-                    </div>
-                </div>
+<div class="row g-4">
+    <div class="col-12 col-lg-4">
+        <div class="card-app">
+            <div class="card-app__body text-center">
+                <partial name="_Avatar" model="@(new AvatarModel { Name = Model.Name, Photo = Model.Photo, Folder = "members", Size = "xl" })" />
+                <h2 class="h4 mt-3 mb-1">@Model.Name</h2>
+                <p class="text-muted-2 mb-3">@Model.Email</p>
+                <partial name="_StatusPill" model="@status" />
 
-                @if (Model.PlanName is not null) {
-                    <div class="col-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted d-block mb-1">@nameof(Model.MemberShipStartDate)</small>
-                            <strong>@Model.MemberShipStartDate</strong>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted d-block mb-1">@nameof(Model.MemberShipEndDate)</small>
-                            <strong>@Model.MemberShipEndDate</strong>
+                @if (Model.HasActivePlan) {
+                    <div class="mt-4 p-3 rounded-3 text-start" style="background:var(--brand-50)">
+                        <div class="detail-item__label" style="color:var(--brand-700)">Current plan</div>
+                        <div class="h5 mb-2" style="color:var(--brand-900)">@Model.PlanName</div>
+                        <div class="fs-14" style="color:var(--brand-800)">
+                            <i class="bi bi-calendar-check me-1"></i>@Model.MemberShipStartDate
+                            <i class="bi bi-arrow-right mx-1"></i>@Model.MemberShipEndDate
                         </div>
                     </div>
                 }
-
-                <div class="col-12">
-                    <div class="p-3 bg-light rounded">
-                        <small class="text-muted d-block mb-1">@nameof(Model.Address)</small>
-                        <strong>@(Model.Address?.ToString() ?? "No Address")</strong>
+                else {
+                    <div class="mt-4 p-3 rounded-3 text-start" style="background:var(--surface-sunken)">
+                        <div class="fs-14 text-muted-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            No active membership. This member can't book classes until they're subscribed to a plan.
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="card-app__foot">
+                <div class="row text-center g-0">
+                    <div class="col-6 border-end" style="border-color:var(--border) !important">
+                        <div class="h5 mb-0 mono-num">@Model.TotalMemberships</div>
+                        <div class="fs-13 text-muted-2">Memberships</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h5 mb-0 mono-num">@Model.TotalBookings</div>
+                        <div class="fs-13 text-muted-2">Bookings</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex justify-content-between gap-2 px-3 pb-3">
-        <a asp-controller="Members" asp-action="Index" class="btn btn-fill flex-fill">Back to List</a>
+    <div class="col-12 col-lg-8">
+        <div class="card-app mb-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-person-vcard"></i></span>
+                <div><h2 class="card-app__title">Personal details</h2></div>
+            </div>
+            <div class="card-app__body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-item__label">Email</div>
+                        <div class="detail-item__value">@Model.Email</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Phone</div>
+                        <div class="detail-item__value mono-num">@Model.Phone</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Gender</div>
+                        <div class="detail-item__value">@Model.Gender</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Date of Birth</div>
+                        <div class="detail-item__value">@Model.DateOfBirth</div>
+                    </div>
+                    <div class="detail-item" style="grid-column:1/-1">
+                        <div class="detail-item__label">Address</div>
+                        <div class="detail-item__value">@(Model.Address ?? "Not recorded")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.HealthRecord is not null) {
+            var health = Model.HealthRecord;
+            <div class="card-app mb-4">
+                <div class="card-app__head">
+                    <span class="icon-chip"><i class="bi bi-clipboard2-pulse"></i></span>
+                    <div>
+                        <h2 class="card-app__title">Health record</h2>
+                        <p class="card-app__sub">BMI @health.Bmi — @health.BmiCategory</p>
+                    </div>
+                    <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-action="HealthRecordDetails" asp-route-id="@Model.Id">
+                        Full record
+                    </a>
+                </div>
+                <div class="card-app__body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-item__label">Height</div>
+                            <div class="detail-item__value mono-num">@health.Height cm</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-item__label">Weight</div>
+                            <div class="detail-item__value mono-num">@health.Weight kg</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-item__label">Blood Type</div>
+                            <div class="detail-item__value">@Html.DisplayFor(_ => health.BloodType)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="card-app mb-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-card-checklist"></i></span>
+                <div><h2 class="card-app__title">Subscription history</h2></div>
+            </div>
+            <div class="card-app__body p-0">
+                @if (memberships.Any()) {
+                    <div class="table-app-scroll">
+                        <table class="table-app">
+                            <thead>
+                                <tr>
+                                    <th>Plan</th>
+                                    <th>Period</th>
+                                    <th>Paid</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var membership in memberships) {
+                                    <tr>
+                                        <td class="fw-600">@membership.PlanName</td>
+                                        <td class="text-muted-2 fs-14 mono-num">
+                                            @membership.StartDate.ToString("MMM dd, yyyy") → @membership.EndDate.ToString("MMM dd, yyyy")
+                                        </td>
+                                        <td class="mono-num">@membership.PricePaid.ToString("N0") EGP</td>
+                                        <td><partial name="_StatusPill" model="@membership.Status" /></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else {
+                    <div class="empty-state py-4">
+                        <div class="empty-state__icon"><i class="bi bi-card-checklist"></i></div>
+                        <h3 class="empty-state__title">No subscriptions yet</h3>
+                        <p class="empty-state__text">This member has never been signed up to a plan.</p>
+                        @if (isAdmin) {
+                            <a class="btn-app btn-app--primary" asp-controller="Memberships" asp-action="Create" asp-route-memberId="@Model.Id">
+                                <i class="bi bi-plus-lg"></i> Subscribe to a plan
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card-app">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-calendar-check"></i></span>
+                <div><h2 class="card-app__title">Class bookings</h2></div>
+            </div>
+            <div class="card-app__body p-0">
+                @if (bookings.Count > 0) {
+                    <div class="table-app-scroll">
+                        <table class="table-app">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Trainer</th>
+                                    <th>When</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var booking in bookings) {
+                                    <tr>
+                                        <td class="fw-600">@booking.SessionCategory</td>
+                                        <td class="text-muted-2">@booking.TrainerName</td>
+                                        <td class="text-muted-2 fs-14 mono-num">@booking.SessionStart.ToString("MMM dd, yyyy · HH:mm")</td>
+                                        <td><partial name="_StatusPill" model="@booking.SessionStatus" /></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else {
+                    <div class="empty-state py-4">
+                        <div class="empty-state__icon"><i class="bi bi-calendar-x"></i></div>
+                        <h3 class="empty-state__title">No bookings yet</h3>
+                        <p class="empty-state__text">This member hasn't reserved a seat in any class.</p>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 </div>

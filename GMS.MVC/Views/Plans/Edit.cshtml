@@ -1,63 +1,67 @@
 ﻿@model UpdatePlanDTO
+@{
+    ViewData["Title"] = "Edit Plan";
+    ViewData["Crumb"] = $"Updating {Model.Name}";
+    var planId = ViewBag.PlanId as int? ?? 0;
+}
 
-<div class="container mt-4">
-    <header class="mb-4">
-        <h3 class="text-primary-color">Edit Plan</h3>
-        <p class="text-muted">Update plan details</p>
-    </header>
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Catalogue · Plans</div>
+        <h1 class="page-head__title">Edit @Model.Name</h1>
+        <p class="page-head__sub">The plan name is fixed; price, duration and description can change.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to plans</a>
+    </div>
+</div>
 
-    @Html.ValidationMessage("DataInvalid", new { @class = "text-danger" })
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
 
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-
-                    <form asp-action="Edit" method="post">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label asp-for="Name" class="form-label fw-semibold">
-                                    Plan Name <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="Name" class="form-control" readonly />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="DurationDays" class="form-label fw-semibold">
-                                    Duration (Days) <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="DurationDays" type="number" class="form-control" />
-                                <small class="text-muted">e.g., 30 days = 1 month</small>
-                                <span asp-validation-for="DurationDays" class="text-danger d-block"></span>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label asp-for="Price" class="form-label fw-semibold">
-                                    Price (EGP) <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="Price" type="number" step="0.01" class="form-control" />
-                                <span asp-validation-for="Price" class="text-danger"></span>
-                            </div>
-
-                            <div class="col-12">
-                                <label asp-for="Dsescription" class="form-label fw-semibold">
-                                    Description <span class="text-danger">*</span>
-                                </label>
-                                <textarea asp-for="Dsescription" class="form-control" rows="4"></textarea>
-                                <span asp-validation-for="Dsescription" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                            <a asp-action="Index" class="btn btn-outline">
-                                <i class="bi bi-arrow-left me-1"></i>Cancel
-                            </a>
-                            <button type="submit" class="btn btn-fill">
-                                <i class="bi bi-check-lg me-1"></i>Update Plan
-                            </button>
-                        </div>
-                    </form>
+                <div class="alert-app alert-app--info">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <div>Changes only affect memberships sold from now on. Existing contracts keep the price and duration they were sold at.</div>
                 </div>
+
+                <form asp-action="Edit" asp-route-id="@planId" method="post" novalidate>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="Name">Plan Name</label>
+                            <input asp-for="Name" class="form-control" readonly />
+                            <div class="field-hint">Fixed, so existing contracts keep referring to the same product.</div>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="DurationDays">Duration (days) <span class="req">*</span></label>
+                            <input asp-for="DurationDays" type="number" class="form-control" min="1" max="365" />
+                            <div class="field-hint">Between 1 and 365 days.</div>
+                            <span asp-validation-for="DurationDays"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Price">Price (EGP) <span class="req">*</span></label>
+                            <input asp-for="Price" type="number" step="0.01" class="form-control" min="0" />
+                            <span asp-validation-for="Price"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Dsescription">Description <span class="req">*</span></label>
+                            <textarea asp-for="Dsescription" class="form-control" rows="4"></textarea>
+                            <span asp-validation-for="Dsescription"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" class="btn-app btn-app--primary">
+                            <i class="bi bi-check-lg"></i> Update Plan
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

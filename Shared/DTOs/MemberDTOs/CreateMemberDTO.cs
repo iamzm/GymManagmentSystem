@@ -39,6 +39,10 @@ namespace Shared.DTOs.MemberDTOs {
         [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "City Can Be Contain Only Letters And Spaces")]
         public string City { get; set; } = null!;
 
+        /// <summary>File Name Of The Uploaded Profile Photo, Set By The Controller After The
+        /// Attachment Service Has Stored It. Not Posted Directly By The Browser.</summary>
+        public string? Photo { get; set; }
+
         [Required(ErrorMessage = "Health Record Is Required")]
         public HealthRecordDTO HealthRecordDTO { get; set; } = null!;
     }

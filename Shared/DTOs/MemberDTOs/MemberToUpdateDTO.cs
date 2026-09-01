@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 
 namespace Shared.DTOs.MemberDTOs {
     public class MemberToUpdateDTO {
+        public int Id { get; set; }
+
+        /// <summary>Existing Photo File Name; Replaced By The Controller Only When A New File Is Posted.</summary>
+        public string? Photo { get; set; }
+
         [Required(ErrorMessage = "Name Is Required")]
         [StringLength(50, MinimumLength = 2, ErrorMessage = "Name Must Be Between 2 And 50 Char")]
         [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Name Can Be Contain Only Letters And Spaces")]

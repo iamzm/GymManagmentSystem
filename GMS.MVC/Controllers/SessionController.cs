@@ -1,26 +1,29 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using GMS.MVC.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Services.Abstraction.Contract;
-using Shared.DTOs.PlanDTOs;
 using Shared.DTOs.SessionDTOs;
-using Shared.DTOs.TrainerDTOs;
 
 namespace GMS.MVC.Controllers {
+    [Authorize(Policy = AppPolicies.StaffOnly)]
     public class SessionController(IServiceManger serviceManger) : Controller {
 
         #region ==== Get Session Details & Get All Sessions ====
-        public async Task<ActionResult> Index() {
-            var sessions = await serviceManger.SessionService.GetAllSessions();
+        public async Task<ActionResult> Index(string? search, string? status) {
+            var sessions = await serviceManger.SessionService.GetAllSessions(search, status);
+            ViewBag.Search = search;
+            ViewBag.Status = status;
             return View(sessions);
         }
         public async Task<ActionResult> Details(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
             var session = await serviceManger.SessionService.GetSessionById(id);
             if (session is null) {
-                TempData["ErorrMessage"] = $"Session With Id {id} Not Found";
+                TempData["ErrorMessage"] = $"Session With Id {id} Was Not Found.";
                 return RedirectToAction(nameof(Index));
             }
             return View(session);
@@ -28,6 +31,7 @@ namespace GMS.MVC.Controllers {
         #endregion
 
         #region ==== Create Session ====
+        [Authorize(Policy = AppPolicies.AdminOnly)]
         public async Task<ActionResult> Create() {
             await GetCategoriesForDropdown();
             await GetTrainersForDropdown();
@@ -35,10 +39,11 @@ namespace GMS.MVC.Controllers {
         }
 
         [HttpPost] // Get DTO From Client Side Then Create The Session
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(CreateSessionDTO createSessionDTO) {
 
             if (!ModelState.IsValid) {
-                ModelState.AddModelError("DataInvalid", "Check The Data And Missing Fields");
                 await GetCategoriesForDropdown();
                 await GetTrainersForDropdown();
                 return View(nameof(Create), createSessionDTO);
@@ -48,11 +53,11 @@ namespace GMS.MVC.Controllers {
             var result = await serviceManger.SessionService.CreateSession(createSessionDTO);
 
             if (result) {
-                TempData["SuccessMessage"] = "Session Created Successfully";
+                TempData["SuccessMessage"] = "The Session Was Created.";
                 return RedirectToAction(nameof(Index));
             }
             else {
-                TempData["ErorrMessage"] = $"Create Session Failed, Check The Data";
+                ModelState.AddModelError(string.Empty, "Creating The Session Failed. Check That The Start Time Is In The Future And The Capacity Is Between 1 And 25.");
                 await GetCategoriesForDropdown();
                 await GetTrainersForDropdown();
                 return View(nameof(Create), createSessionDTO);
@@ -61,42 +66,46 @@ namespace GMS.MVC.Controllers {
         #endregion
 
         #region ==== Edit Session ====
+        [Authorize(Policy = AppPolicies.AdminOnly)]
         public async Task<ActionResult> Edit(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
-            var plan = await serviceManger.SessionService.GetSessionToUpdate(id);
+            var session = await serviceManger.SessionService.GetSessionToUpdate(id);
 
-            if (plan is null) {
-                TempData["ErorrMessage"] = $"Session With Id {id} Not Found";
+            if (session is null) {
+                // The Service Also Returns Null For A Session That Has Started Or Already Has Bookings.
+                TempData["ErrorMessage"] = "This Session Cannot Be Edited. It Has Already Started, Finished, Or Has Bookings Against It.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Get Only Trainers
             await GetTrainersForDropdown();
+            await GetCategoriesForDropdown();
 
-            return View(plan);
+            return View(session);
         }
 
         [HttpPost] // Get DTO From Client Side Then Update The Session
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> Edit([FromRoute] int id, UpdateSessionDTO updateSessionDTO) {
             if (!ModelState.IsValid) {
-                ModelState.AddModelError("DataInvalid", "Check The Data And Missing Fields");
                 await GetTrainersForDropdown();
+                await GetCategoriesForDropdown();
                 return View(nameof(Edit), updateSessionDTO);
             }
 
-            // Update The Memeber
             var result = await serviceManger.SessionService.UpdateSession(updateSessionDTO, id);
 
             if (result) {
-                TempData["SuccessMessage"] = "Session Updated Successfully";
+                TempData["SuccessMessage"] = "The Session Was Updated.";
                 return RedirectToAction(nameof(Index));
             }
             else {
-                TempData["ErorrMessage"] = $"Update Session Failed, Check The Data";
+                ModelState.AddModelError(string.Empty, "Updating The Session Failed. A Session Can Only Be Changed While It Is Still Upcoming And Unbooked.");
                 await GetTrainersForDropdown();
+                await GetCategoriesForDropdown();
                 return View(nameof(Edit), updateSessionDTO);
             }
 
@@ -104,34 +113,34 @@ namespace GMS.MVC.Controllers {
         #endregion
 
         #region ==== Delete Session ====
+        [Authorize(Policy = AppPolicies.AdminOnly)]
         public async Task<ActionResult> Delete(int id) {
             if (id <= 0) {
-                TempData["ErorrMessage"] = "Id Can Not Be 0 Or Negative Value";
+                TempData["ErrorMessage"] = "Id Can Not Be 0 Or A Negative Value.";
                 return RedirectToAction(nameof(Index));
             }
             var session = await serviceManger.SessionService.GetSessionById(id);
 
             if (session is null) {
-                TempData["ErorrMessage"] = $"Session With Id {id} Not Found";
+                TempData["ErrorMessage"] = $"Session With Id {id} Was Not Found.";
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.SessionName = session.CategoryName;
-            ViewBag.Id = session.Id;
-
-            return View();
+            return View(session);
         }
 
         [HttpPost] // Get DTO From Client Side Then Delete The Session
+        [Authorize(Policy = AppPolicies.AdminOnly)]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> DeleteSession([FromForm] int id) {
 
             var result = await serviceManger.SessionService.RemoveSession(id);
 
             if (result) {
-                TempData["SuccessMessage"] = "Session Deleted Successfully";
+                TempData["SuccessMessage"] = "The Session Was Deleted.";
             }
             else {
-                TempData["ErorrMessage"] = $"Delete Session Failed, Check The Active Booking";
+                TempData["ErrorMessage"] = "Deleting The Session Failed. It May Already Have Bookings Or Have Started.";
             }
 
             return RedirectToAction(nameof(Index));

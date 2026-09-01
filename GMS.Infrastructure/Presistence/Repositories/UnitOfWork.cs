@@ -18,6 +18,14 @@ namespace Presistence.Repositories {
             =>  (ISessionRepository) _repositories.GetOrAdd(typeof(ISessionRepository).Name,
                 key => new SessionRepository(_context));
 
+        public IMembershipRepository GetMembershipRepository()
+            => (IMembershipRepository)_repositories.GetOrAdd(typeof(IMembershipRepository).Name,
+                key => new MembershipRepository(_context));
+
+        public IBookingRepository GetBookingRepository()
+            => (IBookingRepository)_repositories.GetOrAdd(typeof(IBookingRepository).Name,
+                key => new BookingRepository(_context));
+
         public IGenericRepository<TEntity> GetRepository<TEntity>() where TEntity : BaseEntity, new()
             => (IGenericRepository<TEntity>)_repositories.GetOrAdd(typeof(TEntity).Name, 
                 key => new GenericRepository<TEntity>(_context));

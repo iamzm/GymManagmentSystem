@@ -7,16 +7,32 @@ using Shared.DTOs.TrainerDTOs;
 
 namespace Services.Implmentations {
     public class SessionService(IUnitOfWork _unitOfWork, IMapper _mapper) : ISessionService {
-        public async Task<IEnumerable<SessionDTO>> GetAllSessions() {
+        public async Task<IEnumerable<SessionDTO>> GetAllSessions(string? search = null, string? status = null) {
             var sessionRepo = _unitOfWork.GetSessionRepository();
             var sessions = await sessionRepo.GetAllSessionsWithTrainerAndCategoryAsync();
             if (!sessions.Any()) return [];
-            var sessionsdata = _mapper.Map<IEnumerable<SessionDTO>>(sessions);
-            // Assign Availble Slots To Each Session
-            foreach (var session in sessionsdata) {
-                session.AvailableSlots = session.Capacity - await sessionRepo.GetCountOfBookedSlotsAsync(session.Id);
+
+            var sessionsdata = _mapper.Map<IEnumerable<SessionDTO>>(sessions).ToList();
+
+            // One Grouped Count Query Covers Every Card, Rather Than One Round Trip Per Session.
+            var bookedCounts = await _unitOfWork.GetBookingRepository().GetBookedCountsAsync(sessionsdata.Select(S => S.Id));
+            foreach (var session in sessionsdata)
+                session.AvailableSlots = session.Capacity - (bookedCounts.TryGetValue(session.Id, out var count) ? count : 0);
+
+            IEnumerable<SessionDTO> filtered = sessionsdata;
+
+            if (!string.IsNullOrWhiteSpace(search)) {
+                var term = search.Trim();
+                filtered = filtered.Where(S =>
+                    S.CategoryName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    S.TrainerName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    S.Description.Contains(term, StringComparison.OrdinalIgnoreCase));
             }
-            return sessionsdata;
+
+            if (!string.IsNullOrWhiteSpace(status) && !status.Equals("all", StringComparison.OrdinalIgnoreCase))
+                filtered = filtered.Where(S => S.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
+
+            return [.. filtered.OrderByDescending(S => S.StartDate)];
         }
         public async Task<SessionDTO?> GetSessionById(int sessionId) {
             var sessionRepo = _unitOfWork.GetSessionRepository();
@@ -35,10 +51,12 @@ namespace Services.Implmentations {
                 if (!await IsCategoryExist(createSessionDTO.CategoryId)) return false;
                 // Check If Date Time Is Valid
                 if (!IsTimeValid(createSessionDTO.StartDate, createSessionDTO.EndDate)) return false;
-                // Check If Capacity Is Vali
-                if (createSessionDTO.Capacity > 25 || createSessionDTO.Capacity < 0) return false;
+                // Capacity Must Match The Database Check Constraint (Between 1 And 25).
+                if (createSessionDTO.Capacity is > 25 or < 1) return false;
                 // Create Session
                 var sessionEntity = _mapper.Map<Session>(createSessionDTO);
+                sessionEntity.CreatedAt = DateOnly.FromDateTime(DateTime.Now);
+                sessionEntity.UpdatedAt = DateOnly.FromDateTime(DateTime.Now);
                 await _unitOfWork.GetRepository<Session>().AddAsync(sessionEntity);
                 return await _unitOfWork.SaveChangesAsync() > 0;
             } catch (Exception ex) {
@@ -96,7 +114,7 @@ namespace Services.Implmentations {
         private async Task<bool> IsCategoryExist(int categoryId)
             => await _unitOfWork.GetRepository<Category>().GetAsync(categoryId) is not null;
         private bool IsTimeValid(DateTime startDate, DateTime endDate)
-            => endDate > startDate;
+            => endDate > startDate && startDate > DateTime.Now;
         private async Task<bool> IsSessionAllowedForUpdatingOrRemoving(Session session) {
             // Is Session Completed -> No Allow
             if (session.EndDate < DateTime.Now) return false;

@@ -1,112 +1,133 @@
 ﻿@model MemberToUpdateDTO
+@{
+    ViewData["Title"] = "Edit Member";
+    ViewData["Crumb"] = $"Updating {Model.Name}";
+}
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card card-details border-0 p-2 shadow">
-                <div class="card-body text-center">
-                    <div class="text-center mt-3">
-                        <img src="~/images/User.png" alt="@Model.Name" class="rounded-circle"
-                             style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #fff; margin-top: -60px;" />
-                    </div>
-                    <div class="card-body text-center">
-                        <h2 class="mb-1 text-primary-color">@Model.Name</h2>
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">People · Members</div>
+        <h1 class="page-head__title">Edit @Model.Name</h1>
+        <p class="page-head__sub">Date of birth and gender are fixed once a member is registered.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="MemberDetails" asp-route-id="@Model.Id">
+            <i class="bi bi-person-lines-fill"></i> View profile
+        </a>
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
 
-                        <form method="post" asp-action="EditMember">
-                            <div class="mt-4 text-start">
-                                <div class="row g-3">
-                                    <div class="col-12">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="Email" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="Email" class="form-control" />
-                                            <span asp-validation-for="Email" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="Name" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="Name" class="form-control" />
-                                            <span asp-validation-for="Name" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="Phone" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="Phone" class="form-control" />
-                                            <span asp-validation-for="Phone" class="text-danger"></span>
-                                        </div>
-                                    </div>
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
 
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="BuildingNumber" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="BuildingNumber" class="form-control" />
-                                            <span asp-validation-for="BuildingNumber"
-                                                  class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="City" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="City" class="form-control" />
-                                            <span asp-validation-for="City" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="Street" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="Street" class="form-control" />
-                                            <span asp-validation-for="Street" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="HealthRecordDTO.Height" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="HealthRecordDTO.Height" class="form-control" />
-                                            <span asp-validation-for="HealthRecordDTO.Height" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="HealthRecordDTO.Weight" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="HealthRecordDTO.Weight" class="form-control" />
-                                            <span asp-validation-for="HealthRecordDTO.Weight" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="HealthRecordDTO.BloodType" class="form-label"></label>
-                                            <select asp-for="HealthRecordDTO.BloodType" asp-items="Html.GetEnumSelectList<BloodType>()" class="form-select">
-                                                <option value=""> -- Select BloodType -- </option>
-                                            </select>
-                                            <span asp-validation-for="HealthRecordDTO.BloodType" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="p-3 bg-light rounded">
-                                            <label asp-for="HealthRecordDTO.Note" class="text-muted d-block mb-1"></label>
-                                            <input asp-for="HealthRecordDTO.Note" class="form-control" />
-                                        </div>
-                                    </div>
-                                </div>
+                <form asp-action="EditMember" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" novalidate>
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="Photo" />
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-person-circle"></i> Profile photo</div>
+                        <div class="upload-photo">
+                            <div class="upload-photo__preview" id="photoPreview">
+                                @if (!string.IsNullOrWhiteSpace(Model.Photo)) {
+                                    <img src="~/uploads/members/@Model.Photo" alt="@Model.Name" />
+                                }
+                                else {
+                                    <i class="bi bi-camera"></i>
+                                }
                             </div>
-
-
-                            <div class="d-flex justify-content-between gap-2 mt-3 px-3 pb-3">
-                                <a asp-controller="Members" asp-action="Index" class="btn btn-fill "> Back to List </a>
-                                <button type="submit" class="btn btn-fill ">Done</button>
+                            <div class="flex-grow-1">
+                                <input type="file" name="photoFile" class="form-control" accept="image/png,image/jpeg,image/webp"
+                                       data-photo-input="#photoPreview" aria-label="Profile photo" />
+                                <div class="field-hint">Leave empty to keep the current photo. JPG, PNG or WEBP up to 2 MB.</div>
+                                <span class="field-error">@Html.ValidationMessage("photoFile")</span>
                             </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
 
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-person-vcard"></i> Personal information</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Name">Full Name <span class="req">*</span></label>
+                                <input asp-for="Name" class="form-control" />
+                                <span asp-validation-for="Name"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Email">Email <span class="req">*</span></label>
+                                <input asp-for="Email" class="form-control" />
+                                <span asp-validation-for="Email"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Phone">Phone <span class="req">*</span></label>
+                                <input asp-for="Phone" class="form-control" />
+                                <span asp-validation-for="Phone"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-geo-alt"></i> Address</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3">
+                                <label asp-for="BuildingNumber">Building No. <span class="req">*</span></label>
+                                <input asp-for="BuildingNumber" type="number" class="form-control" min="1" max="9000" />
+                                <span asp-validation-for="BuildingNumber"></span>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <label asp-for="Street">Street <span class="req">*</span></label>
+                                <input asp-for="Street" class="form-control" />
+                                <span asp-validation-for="Street"></span>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label asp-for="City">City <span class="req">*</span></label>
+                                <input asp-for="City" class="form-control" />
+                                <span asp-validation-for="City"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-clipboard2-pulse"></i> Health record</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label asp-for="HealthRecordDTO.Height">Height (cm) <span class="req">*</span></label>
+                                <input asp-for="HealthRecordDTO.Height" type="number" step="0.1" class="form-control" />
+                                <span asp-validation-for="HealthRecordDTO.Height"></span>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label asp-for="HealthRecordDTO.Weight">Weight (kg) <span class="req">*</span></label>
+                                <input asp-for="HealthRecordDTO.Weight" type="number" step="0.1" class="form-control" />
+                                <span asp-validation-for="HealthRecordDTO.Weight"></span>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label asp-for="HealthRecordDTO.BloodType">Blood Type <span class="req">*</span></label>
+                                <select asp-for="HealthRecordDTO.BloodType" asp-items="Html.GetEnumSelectList<BloodType>()" class="form-select"></select>
+                                <span asp-validation-for="HealthRecordDTO.BloodType"></span>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="HealthRecordDTO.Note">Notes</label>
+                                <textarea asp-for="HealthRecordDTO.Note" class="form-control" rows="3"></textarea>
+                                <span asp-validation-for="HealthRecordDTO.Note"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" class="btn-app btn-app--primary">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-@section Scripts {   
+@section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
-

@@ -1,75 +1,97 @@
 ﻿@model HealthRecordDTO
+@{
+    var memberName = ViewBag.MemberName as string ?? "Member";
+    var memberId = ViewBag.MemberId as int? ?? 0;
+    ViewData["Title"] = "Health Record";
+    ViewData["Crumb"] = memberName;
 
+    var (bmiPill, bmiMeter) = Model.BmiCategory switch {
+        "Normal" => ("pill--ok", "meter--ok"),
+        "Underweight" => ("pill--warn", "meter--warn"),
+        "Overweight" => ("pill--warn", "meter--warn"),
+        "Obese" => ("pill--danger", "meter--danger"),
+        _ => ("pill--muted", "")
+    };
+    // 40 is the top of the scale the bar is drawn against.
+    var bmiPercent = Math.Clamp((int)Math.Round((double)Model.Bmi / 40 * 100), 0, 100);
+}
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary-color text-white text-center py-4">
-                    <h3 class="mb-1">Health Record</h3>
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">People · Members</div>
+        <h1 class="page-head__title">Health record</h1>
+        <p class="page-head__sub">@memberName</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="MemberDetails" asp-route-id="@memberId">
+            <i class="bi bi-person-lines-fill"></i> Member profile
+        </a>
+        @if (User.IsInRole(AppRoles.Admin)) {
+            <a class="btn-app btn-app--primary" asp-action="EditMember" asp-route-id="@memberId">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-7">
+        <div class="card-app">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-clipboard2-pulse"></i></span>
+                <div>
+                    <h2 class="card-app__title">Measurements</h2>
+                    <p class="card-app__sub">Used by trainers to program safely</p>
                 </div>
-
-                <div class="card-body p-4">
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light p-4 h-100">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="bg-primary-color rounded-circle p-2 me-3"
-                                         style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                        <span class="text-white fw-bold">H</span>
-                                    </div>
-                                    <h6 class="text-muted mb-0">Height</h6>
-                                </div>
-                                <h4 class="text-primary-color mb-0">@Model.Height <small>cm</small></h4>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light p-4 h-100">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="bg-primary-color rounded-circle p-2 me-3"
-                                         style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                        <span class="text-white fw-bold">W</span>
-                                    </div>
-                                    <h6 class="text-muted mb-0">Weight</h6>
-                                </div>
-                                <h4 class="text-primary-color mb-0">@Model.Weight <small>kg</small></h4>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light p-4 h-100">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="bg-danger rounded-circle p-2 me-3"
-                                         style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                        <span class="text-white fw-bold">B</span>
-                                    </div>
-                                    <h6 class="text-muted mb-0">Blood Type</h6>
-                                </div>
-                                <h4 class="text-danger mb-0"> @Model.BloodType </h4>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border-0 bg-light p-4 h-100">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="bg-warning rounded-circle p-2 me-3"
-                                         style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                        <span class="text-white fw-bold">N</span>
-                                    </div>
-                                    <h6 class="text-muted mb-0">Note</h6>
-                                </div>
-                                <h4 class="text-danger mb-0">@(String.IsNullOrEmpty(Model.Note) ? "No Notes" : Model.Note)</h4>
-                            </div>
-                        </div>
+            </div>
+            <div class="card-app__body">
+                <div class="detail-grid mb-4">
+                    <div class="detail-item">
+                        <div class="detail-item__label">Height</div>
+                        <div class="detail-item__value mono-num">@Model.Height cm</div>
                     </div>
-
-                    <div class="card-footer bg-white border-0 p-4">
-                        <div class="d-flex justify-content-between gap-2">
-                            <a asp-controller="Members" asp-action="Index"
-                               class="btn btn-fill flex-fill">Back to List</a>
-                        </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Weight</div>
+                        <div class="detail-item__value mono-num">@Model.Weight kg</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Blood Type</div>
+                        <div class="detail-item__value">@Html.DisplayFor(m => m.BloodType)</div>
                     </div>
                 </div>
+
+                <div class="p-3 rounded-3" style="background:var(--surface-sunken)">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="detail-item__label mb-0">Body Mass Index</span>
+                        <span class="pill @bmiPill">@Model.Bmi — @Model.BmiCategory</span>
+                    </div>
+                    <div class="meter @bmiMeter">
+                        <div class="meter__fill" style="width:@(bmiPercent)%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between fs-13 text-subtle mt-1 mono-num">
+                        <span>0</span><span>18.5</span><span>25</span><span>30</span><span>40</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="card-app h-100">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-journal-text"></i></span>
+                <div><h2 class="card-app__title">Trainer notes</h2></div>
+            </div>
+            <div class="card-app__body">
+                @if (!string.IsNullOrWhiteSpace(Model.Note)) {
+                    <p class="mb-0">@Model.Note</p>
+                }
+                else {
+                    <p class="text-muted-2 mb-0">
+                        <i class="bi bi-dash-circle me-1"></i>
+                        No notes recorded. Injuries, conditions or training restrictions go here.
+                    </p>
+                }
             </div>
         </div>
     </div>

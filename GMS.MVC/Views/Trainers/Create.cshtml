@@ -1,99 +1,113 @@
 ﻿@model CreateTrainerDTO
+@{
+    ViewData["Title"] = "Add Trainer";
+    ViewData["Crumb"] = "Register a new trainer";
+}
 
-<div class="container mt-4">
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">People · Trainers</div>
+        <h1 class="page-head__title">Add a trainer</h1>
+        <p class="page-head__sub">Contact details and the specialty they'll be scheduled against.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
 
-    <header class="mb-4">
-        <h3 class="text-primary-color">Add New Trainer</h3>
-    </header>
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
 
-    @Html.ValidationMessage("DataInvalid", new { @class = "text-danger" })
+                <form asp-action="CreateTrainer" method="post" enctype="multipart/form-data" novalidate>
 
-    <form asp-action="CreateTrainer" method="post">
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-person-circle"></i> Profile photo</div>
+                        <div class="upload-photo">
+                            <div class="upload-photo__preview" id="photoPreview"><i class="bi bi-camera"></i></div>
+                            <div class="flex-grow-1">
+                                <input type="file" name="photoFile" class="form-control" accept="image/png,image/jpeg,image/webp"
+                                       data-photo-input="#photoPreview" aria-label="Profile photo" />
+                                <div class="field-hint">Optional. JPG, PNG or WEBP up to 2 MB.</div>
+                                <span class="field-error">@Html.ValidationMessage("photoFile")</span>
+                            </div>
+                        </div>
+                    </div>
 
-        <!-- Trainer Info -->
-        <div class="section-header mb-3">
-            <h5 class="text-primary fw-bold">Personal Information</h5>
-            <hr class="mt-2">
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-person-vcard"></i> Personal information</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Name">Full Name <span class="req">*</span></label>
+                                <input asp-for="Name" class="form-control" placeholder="Omar Hassan" />
+                                <span asp-validation-for="Name"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Email">Email <span class="req">*</span></label>
+                                <input asp-for="Email" class="form-control" placeholder="omar@powerfitness.com" />
+                                <span asp-validation-for="Email"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Phone">Phone <span class="req">*</span></label>
+                                <input asp-for="Phone" class="form-control" placeholder="01012345678" />
+                                <div class="field-hint">Egyptian mobile: 010, 011, 012 or 015 followed by 8 digits.</div>
+                                <span asp-validation-for="Phone"></span>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label asp-for="DateOfBirth">Date of Birth <span class="req">*</span></label>
+                                <input asp-for="DateOfBirth" type="date" class="form-control" />
+                                <span asp-validation-for="DateOfBirth"></span>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label asp-for="Gender">Gender <span class="req">*</span></label>
+                                <select asp-for="Gender" asp-items="Html.GetEnumSelectList<Gender>()" class="form-select">
+                                    <option value="">Select…</option>
+                                </select>
+                                <span asp-validation-for="Gender"></span>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="Specialties">Specialty <span class="req">*</span></label>
+                                <select asp-for="Specialties" asp-items="Html.GetEnumSelectList<Specialties>()" class="form-select">
+                                    <option value="">Select…</option>
+                                </select>
+                                <span asp-validation-for="Specialties"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-geo-alt"></i> Address</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3">
+                                <label asp-for="BuildingNumber">Building No. <span class="req">*</span></label>
+                                <input asp-for="BuildingNumber" type="number" class="form-control" min="1" />
+                                <span asp-validation-for="BuildingNumber"></span>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <label asp-for="Street">Street <span class="req">*</span></label>
+                                <input asp-for="Street" class="form-control" placeholder="El Nasr" />
+                                <span asp-validation-for="Street"></span>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label asp-for="City">City <span class="req">*</span></label>
+                                <input asp-for="City" class="form-control" placeholder="Cairo" />
+                                <span asp-validation-for="City"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" class="btn-app btn-app--primary">
+                            <i class="bi bi-check-lg"></i> Create Trainer
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-
-        <div class="row g-3">
-
-            <div class="col-12 col-md-6">
-                <label asp-for="Name" class="form-label"></label>
-                <input asp-for="Name" type="text" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-            </div>
-
-            <div>
-                <label asp-for="Email" class="form-label"></label>
-                <input asp-for="Email" type="text" class="form-control" />
-                <span asp-validation-for="Email" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label asp-for="Phone" class="form-label"></label>
-                <input asp-for="Phone" type="text" class="form-control" />
-                <span asp-validation-for="Phone" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label asp-for="DateOfBirth" class="form-label"></label>
-                <input asp-for="DateOfBirth" type="date" class="form-control" />
-                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label asp-for="Gender" class="form-label"></label>
-                <select asp-for="Gender" asp-items="Html.GetEnumSelectList<Gender>()" class="form-select">
-                    <option value=""> -- Select Gender -- </option>
-                </select>
-                <span asp-validation-for="Gender" class="text-danger"></span>
-            </div>
-
-        </div>
-
-        <div class="section-header mb-3 mt-4">
-            <h5 class="text-primary fw-bold">Address Information</h5>
-            <hr class="mt-2">
-        </div>
-
-        <div class="row g-3">
-
-            <div class="col-12 col-md-6">
-                <label asp-for="BuildingNumber" class="form-label"></label>
-                <input asp-for="BuildingNumber" type="text" class="form-control" />
-                <span asp-validation-for="BuildingNumber" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label asp-for="Street" class="form-label"></label>
-                <input asp-for="Street" type="text" class="form-control" />
-                <span asp-validation-for="Street" class="text-danger"></span>
-            </div>
-            <div class="col-12 col-md-6">
-                <label asp-for="City" class="form-label"></label>
-                <input asp-for="City" type="text" class="form-control" />
-                <span asp-validation-for="City" class="text-danger"></span>
-            </div>
-        </div>
-        <!-- Professional Information -->
-        <div class="section-header mb-3">
-            <h5 class="text-primary fw-bold">Professional Information</h5>
-            <hr class="mt-2">
-        </div>
-
-        <label asp-for="Specialties" class="form-label"></label>
-        <select asp-for="Specialties" asp-items="Html.GetEnumSelectList<Specialties>()" class="form-select">
-            <option value=""> -- Select Specialte -- </option>
-        </select>
-        <span asp-validation-for="Specialties" class="text-danger"></span>
-
-        <footer class="d-flex justify-content-end mt-4">
-            <button type="submit" class="btn btn-fill">Add</button>
-        </footer>
-
-    </form>
-
+    </div>
 </div>
 
 @section Scripts {

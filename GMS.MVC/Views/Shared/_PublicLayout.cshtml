@@ -1,0 +1,119 @@
+﻿@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "Power Fitness") · Power Fitness</title>
+    <link rel="shortcut icon" href="~/images/icon.svg" type="image/x-icon" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400..800&family=Rubik:wght@300..700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('pf-theme');
+                if (t) document.documentElement.setAttribute('data-theme', t);
+            } catch (e) { }
+        })();
+    </script>
+</head>
+
+<body>
+    <header class="public-nav">
+        <div class="container">
+            <div class="public-nav__inner">
+                <a class="d-flex align-items-center gap-2 text-decoration-none" asp-controller="Home" asp-action="Index">
+                    <span class="sidebar__logo" style="background:var(--brand-900)"><i class="bi bi-lightning-charge-fill"></i></span>
+                    <span>
+                        <span class="sidebar__title d-block" style="color:var(--text)">Power Fitness</span>
+                        <span class="sidebar__subtitle" style="color:var(--text-subtle)">Train with purpose</span>
+                    </span>
+                </a>
+
+                <nav class="public-nav__links">
+                    <a class="public-nav__link d-none d-md-inline-flex" href="#about">About</a>
+                    <a class="public-nav__link d-none d-md-inline-flex" href="#classes">Classes</a>
+                    <a class="public-nav__link d-none d-md-inline-flex" href="#plans">Plans</a>
+                    <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle dark mode">
+                        <i class="bi bi-moon-stars"></i>
+                    </button>
+
+                    @if (isAuthenticated) {
+                        <a class="btn-app btn-app--primary btn-app--sm" asp-controller="Dashboard" asp-action="Index">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    }
+                    else {
+                        <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="Account" asp-action="Login">Sign In</a>
+                        <a class="btn-app btn-app--primary btn-app--sm" asp-controller="Account" asp-action="Register">Join Now</a>
+                    }
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-12 col-lg-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="sidebar__logo"><i class="bi bi-lightning-charge-fill"></i></span>
+                        <span class="sidebar__title">Power Fitness</span>
+                    </div>
+                    <p style="max-width:300px">Push harder, go further. Certified trainers, live classes and a plan that fits the life you actually have.</p>
+                </div>
+
+                <div class="col-6 col-lg-2">
+                    <h5>Explore</h5>
+                    <ul class="list-unstyled d-grid gap-2 ps-0">
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#classes">Classes</a></li>
+                        <li><a href="#plans">Plans</a></li>
+                        <li><a asp-controller="Home" asp-action="Privacy">Privacy</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <h5>Contact</h5>
+                    <ul class="list-unstyled d-grid gap-2 ps-0">
+                        <li><i class="bi bi-telephone me-2"></i>+20 123 456 789</li>
+                        <li><i class="bi bi-envelope me-2"></i>info@powerfitness.com</li>
+                        <li><i class="bi bi-geo-alt me-2"></i>Gameat El Dowal, Giza</li>
+                    </ul>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <h5>Opening Hours</h5>
+                    <ul class="list-unstyled d-grid gap-2 ps-0">
+                        <li>Mon – Fri &nbsp;·&nbsp; 08:00 – 22:00</li>
+                        <li>Sat – Sun &nbsp;·&nbsp; 08:00 – 21:00</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="site-footer__bottom d-flex flex-wrap gap-2 justify-content-between">
+                <span>© @DateTime.Now.Year Power Fitness. Built with ASP.NET Core MVC.</span>
+                <span>Members: @(isAuthenticated ? "Signed in" : "Sign in to book your next class")</span>
+            </div>
+        </div>
+    </footer>
+
+    <partial name="_Toasts" />
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+
+</html>

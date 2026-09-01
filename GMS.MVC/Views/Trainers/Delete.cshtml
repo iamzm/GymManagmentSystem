@@ -1,20 +1,46 @@
-﻿<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card p-5 shadow text-center">
-                <h3>@ViewBag.TrainerName</h3>
-                <p class="fs-3 text-primary-color mb-4">Are You Sure You Want To Delete This Trainer?</p>
+﻿@model TrainerDTO
+@{
+    ViewData["Title"] = "Delete Trainer";
+    ViewData["Crumb"] = "This cannot be undone";
+}
 
-                <div class="alert alert-warning text-start" role="alert">
-                    <strong>Warning!</strong> This Action Cannot Be Undone. All Member Data Will Be Permanently Deleted.
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-6">
+        <div class="card-app">
+            <div class="card-app__body text-center">
+                <div class="empty-state__icon" style="background:var(--danger-100);color:var(--danger-600)">
+                    <i class="bi bi-exclamation-triangle"></i>
                 </div>
 
-                <form asp-action="DeleteTrainer" method="post" class="mt-4">
-                    <input hidden readonly name="id" value="@ViewBag.Id" />
-                    <div class="buttons d-flex justify-content-between gap-3">
-                        <a asp-controller="Members" asp-action="Index" class="btn-outline flex-fill">NO</a>
-                        <button type="submit" class="btn-fill flex-fill">Yes</button>
+                <h1 class="h4 mb-2">Delete @Model.Name?</h1>
+                <p class="text-muted-2">Their profile will be permanently removed. This cannot be undone.</p>
+
+                <div class="d-flex align-items-center gap-3 justify-content-center my-4 p-3 rounded-3" style="background:var(--surface-sunken)">
+                    <partial name="_Avatar" model="@(new AvatarModel { Name = Model.Name, Photo = Model.Photo, Folder = "trainers", Size = "lg" })" />
+                    <div class="text-start">
+                        <div class="fw-600">@Model.Name</div>
+                        <div class="identity__meta">@Model.Specialties</div>
+                        <div class="identity__meta">@Model.SessionCount class@(Model.SessionCount == 1 ? "" : "es") led</div>
                     </div>
+                </div>
+
+                @if (Model.UpcomingSessionCount > 0) {
+                    <div class="alert-app alert-app--danger text-start">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                            @Model.Name is scheduled to lead @Model.UpcomingSessionCount upcoming
+                            class@(Model.UpcomingSessionCount == 1 ? "" : "es"). Reassign or delete
+                            those sessions first — the delete will be refused otherwise.
+                        </div>
+                    </div>
+                }
+
+                <form asp-action="DeleteTrainer" method="post" class="d-flex gap-2 mt-4">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <a class="btn-app btn-app--ghost flex-fill" asp-action="Index">Keep trainer</a>
+                    <button type="submit" class="btn-app btn-app--danger-solid flex-fill">
+                        <i class="bi bi-trash"></i> Delete permanently
+                    </button>
                 </form>
             </div>
         </div>

@@ -1,0 +1,156 @@
+﻿@model IEnumerable<MembershipDTO>
+@{
+    ViewData["Title"] = "Memberships";
+    ViewData["Crumb"] = "Subscription contracts";
+    var search = ViewBag.Search as string;
+    var status = ViewBag.Status as string;
+    var memberships = Model?.ToList() ?? [];
+    var isAdmin = User.IsInRole(AppRoles.Admin);
+
+    string ChipClass(string? value) => status == value || (string.IsNullOrEmpty(status) && value is null)
+        ? "chip is-active" : "chip";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations</div>
+        <h1 class="page-head__title">Memberships</h1>
+        <p class="page-head__sub">
+            @memberships.Count contract@(memberships.Count == 1 ? "" : "s") shown ·
+            @memberships.Count(M => M.IsActive) active ·
+            @memberships.Sum(M => M.PricePaid).ToString("N0") EGP collected
+        </p>
+    </div>
+    @if (isAdmin) {
+        <div class="page-head__actions">
+            <a class="btn-app btn-app--primary" asp-action="Create">
+                <i class="bi bi-plus-lg"></i> New Membership
+            </a>
+        </div>
+    }
+</div>
+
+<form class="toolbar" method="get" asp-action="Index" data-search-form>
+    <div class="search-field">
+        <i class="bi bi-search"></i>
+        <input type="search" name="search" value="@search" placeholder="Search by member, email or plan…" aria-label="Search memberships" />
+    </div>
+
+    <input type="hidden" name="status" value="@status" />
+
+    <div class="filter-chips">
+        <a class="@ChipClass(null)" asp-action="Index" asp-route-search="@search">All</a>
+        <a class="@ChipClass("active")" asp-action="Index" asp-route-search="@search" asp-route-status="active">Active</a>
+        <a class="@ChipClass("expiring")" asp-action="Index" asp-route-search="@search" asp-route-status="expiring">Expiring soon</a>
+        <a class="@ChipClass("expired")" asp-action="Index" asp-route-search="@search" asp-route-status="expired">Expired</a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(search) || !string.IsNullOrWhiteSpace(status)) {
+        <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-action="Index">
+            <i class="bi bi-x-lg"></i> Clear
+        </a>
+    }
+</form>
+
+@if (memberships.Count > 0) {
+    <div class="table-app-wrap">
+        <div class="table-app-scroll">
+            <table class="table-app">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Plan</th>
+                        <th>Period</th>
+                        <th>Paid</th>
+                        <th>Status</th>
+                        <th>Remaining</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var membership in memberships) {
+                        <tr>
+                            <td>
+                                <div class="identity">
+                                    <partial name="_Avatar" model="@(new AvatarModel { Name = membership.MemberName, Photo = membership.MemberPhoto, Folder = "members" })" />
+                                    <div class="min-width-0">
+                                        <div class="identity__name">@membership.MemberName</div>
+                                        <div class="identity__meta">@membership.MemberEmail</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="pill pill--brand"><i class="bi bi-tag"></i>@membership.PlanName</span></td>
+                            <td class="text-muted-2 fs-14 mono-num">
+                                @membership.StartDate.ToString("MMM dd, yyyy")<br />
+                                <span class="text-subtle">to @membership.EndDate.ToString("MMM dd, yyyy")</span>
+                            </td>
+                            <td class="mono-num fw-600">@membership.PricePaid.ToString("N0")</td>
+                            <td>
+                                <partial name="_StatusPill" model="@(membership.IsExpiringSoon ? "Expiring" : membership.Status)" />
+                            </td>
+                            <td>
+                                @if (membership.IsActive) {
+                                    <span class="mono-num fs-14">@membership.DaysRemaining day@(membership.DaysRemaining == 1 ? "" : "s")</span>
+                                }
+                                else {
+                                    <span class="text-subtle fs-14">—</span>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                <div class="dropdown">
+                                    <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for @membership.MemberName">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Details" asp-route-id="@membership.Id">
+                                                <i class="bi bi-receipt"></i> View contract
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Members" asp-action="MemberDetails" asp-route-id="@membership.MemberId">
+                                                <i class="bi bi-person-lines-fill"></i> Member profile
+                                            </a>
+                                        </li>
+                                        @if (isAdmin) {
+                                            <li><hr class="dropdown-divider" /></li>
+                                            <li>
+                                                <a class="dropdown-item" asp-action="Renew" asp-route-id="@membership.Id">
+                                                    <i class="bi bi-arrow-repeat"></i> Renew
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" asp-action="Cancel" asp-route-id="@membership.Id">
+                                                    <i class="bi bi-x-circle"></i> Cancel membership
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else {
+    <div class="card-app">
+        <div class="empty-state">
+            <div class="empty-state__icon"><i class="bi bi-card-checklist"></i></div>
+            @if (!string.IsNullOrWhiteSpace(search) || !string.IsNullOrWhiteSpace(status)) {
+                <h2 class="empty-state__title">No memberships match that</h2>
+                <p class="empty-state__text">Try a different search term, or clear the filters.</p>
+                <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-x-lg"></i> Clear filters</a>
+            }
+            else {
+                <h2 class="empty-state__title">No memberships yet</h2>
+                <p class="empty-state__text">Subscribe a member to a plan — that contract is what lets them book classes.</p>
+                @if (isAdmin) {
+                    <a class="btn-app btn-app--primary" asp-action="Create"><i class="bi bi-plus-lg"></i> New Membership</a>
+                }
+            }
+        </div>
+    </div>
+}

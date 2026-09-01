@@ -1,0 +1,18 @@
+﻿@* Form-level errors (the ones not tied to a single field). *@
+@if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0) {
+    <div class="alert-app alert-app--danger">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>
+            @if (ViewData.ModelState[string.Empty]!.Errors.Count == 1) {
+                @ViewData.ModelState[string.Empty]!.Errors[0].ErrorMessage
+            }
+            else {
+                <ul>
+                    @foreach (var error in ViewData.ModelState[string.Empty]!.Errors) {
+                        <li>@error.ErrorMessage</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}

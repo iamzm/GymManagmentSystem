@@ -8,6 +8,7 @@ namespace Services.Mapping {
             CreateMap<Session, SessionDTO>()
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.SessionCategory.CategoryName))
                 .ForMember(dest => dest.TrainerName, opt => opt.MapFrom(src => src.SessionTrainer.Name))
+                // Resolved By The Service From The Bookings Table.
                 .ForMember(dest => dest.AvailableSlots, opt => opt.Ignore());
 
             CreateMap<CreateSessionDTO, Session>();
@@ -16,6 +17,5 @@ namespace Services.Mapping {
 
             CreateMap<Category, CategorySelectDTO>();
         }
-
     }
 }

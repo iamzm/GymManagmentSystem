@@ -1,102 +1,119 @@
 ﻿using AutoMapper;
-using AutoMapper.Execution;
 using Domin.Contract;
 using Domin.GymEntities;
 using Services.Abstraction.Contract;
 using Services.Specifications;
+using Shared.DTOs.BookingDTOs;
 using Shared.DTOs.MemberDTOs;
-using System.Xml;
-using Member = Domin.GymEntities.Member;
+using Shared.DTOs.MembershipDTOs;
 
 namespace Services.Implmentations {
     public class MemberService(IUnitOfWork _unitOfWork, IMapper _mapper) : IMemberService {
-        public async Task<IEnumerable<MemberDTO>> GetAllMembers() {
+
+        public async Task<IEnumerable<MemberDTO>> GetAllMembers(string? search = null, string? status = null) {
             try {
                 var members = await _unitOfWork.GetRepository<Member>().GetAllAsync();
-                // Check For Exsiting Members
-                if (members is null || !members.Any()) return Enumerable.Empty<MemberDTO>();
-                // Mapping From Member To MemberDTO
-                var memberResult = _mapper.Map<IEnumerable<MemberDTO>>(members);
-                return memberResult;
+                if (members is null || !members.Any()) return [];
+
+                var result = _mapper.Map<IEnumerable<MemberDTO>>(members).ToList();
+
+                // One Query For Every Row's Subscription State, Instead Of One Query Per Row.
+                var activeByMember = await _unitOfWork.GetMembershipRepository().GetActiveByMemberAsync();
+                foreach (var member in result) {
+                    if (!activeByMember.TryGetValue(member.Id, out var membership)) continue;
+                    member.PlanName = membership.Plan?.Name;
+                    member.MembershipEndDate = membership.EndDate;
+                }
+
+                IEnumerable<MemberDTO> filtered = result;
+
+                if (!string.IsNullOrWhiteSpace(search)) {
+                    var term = search.Trim();
+                    filtered = filtered.Where(M =>
+                        M.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        M.Email.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        M.Phone.Contains(term, StringComparison.OrdinalIgnoreCase));
+                }
+
+                filtered = status?.ToLowerInvariant() switch {
+                    "active" => filtered.Where(M => M.IsActive),
+                    "expired" => filtered.Where(M => M.MembershipEndDate is not null && !M.IsActive),
+                    "noplan" => filtered.Where(M => M.MembershipEndDate is null),
+                    _ => filtered
+                };
+
+                return [.. filtered.OrderBy(M => M.Name)];
             } catch (Exception) {
-                return Enumerable.Empty<MemberDTO>();
+                return [];
             }
         }
+
         public async Task<MemberDetailsDTO?> GetMemberDetailsById(int memberId) {
             try {
-                var membersRepo = _unitOfWork.GetRepository<Member>();
-                var member = await membersRepo.GetAsync(memberId);
-                // Check If Member Is Null
+                var member = await _unitOfWork.GetRepository<Member>()
+                                              .GetAsync(new MemberWithHealthRecordSpecification(memberId));
                 if (member is null) return null;
-                // Mapping From Member To MemberDetailsDTO
+
                 var memberResult = _mapper.Map<MemberDetailsDTO>(member);
 
-                //var memberShip = await _unitOfWork.GetRepository<MemberShip>().GetAllAsync(X => X.MemberId == memberId && X.Status == "Active");
-
-                // Compute 'now' Once So EF Can Translate The Comparison To SQL (Parameterized)
-                var now = DateTime.Now;
-
-                var memberShip = await _unitOfWork.GetRepository<MemberShip>()
-                                                  .GetAllAsync(x => x.MemberId == memberId && x.EndDate >= now);
-
-                var activeMemberShip = memberShip.FirstOrDefault();
-                // Assign Dates To Member
+                var activeMemberShip = await _unitOfWork.GetMembershipRepository().GetActiveForMemberAsync(memberId);
                 if (activeMemberShip is not null) {
-                    memberResult.MemberShipStartDate = activeMemberShip.CreatedAt.ToString();
-                    memberResult.MemberShipEndDate = activeMemberShip.EndDate.ToString() ?? "N/A";
-                    // Get Member Plan 
-                    var memberPlan = await _unitOfWork.GetPlanRepository().GetById(activeMemberShip.PlanId);
-                    memberResult.PlanName = memberPlan?.Name ?? "No Plan";
+                    memberResult.MemberShipStartDate = activeMemberShip.CreatedAt.ToString("MMM dd, yyyy");
+                    memberResult.MemberShipEndDate = activeMemberShip.EndDate.ToString("MMM dd, yyyy");
+                    memberResult.PlanName = activeMemberShip.Plan?.Name
+                        ?? (await _unitOfWork.GetPlanRepository().GetById(activeMemberShip.PlanId))?.Name;
                 }
+
+                var memberships = await _unitOfWork.GetMembershipRepository().GetByMemberAsync(memberId);
+                memberResult.TotalMemberships = memberships.Count();
+                memberResult.TotalBookings = (await _unitOfWork.GetBookingRepository().GetMemberBookingsAsync(memberId)).Count();
+
                 return memberResult;
             } catch (Exception) {
                 return null;
             }
         }
+
         public async Task<bool> CreateMember(CreateMemberDTO createMemberDTO) {
             try {
-                var memberRepo = _unitOfWork.GetRepository<Member>();
                 if (await IsEmailExist(createMemberDTO.Email) || await IsPhoneExist(createMemberDTO.Phone)) return false;
-                // Add New Member
                 var member = _mapper.Map<Member>(createMemberDTO);
+                member.CreatedAt = DateOnly.FromDateTime(DateTime.Now);
+                member.UpdatedAt = DateOnly.FromDateTime(DateTime.Now);
                 await _unitOfWork.GetRepository<Member>().AddAsync(member);
                 return await _unitOfWork.SaveChangesAsync() > 0;
             } catch (Exception) {
                 return false;
             }
         }
+
         public async Task<HealthRecordDTO?> GetMemberHealthRecordDTO(int memberId) {
             try {
-                var healthRecordRepo = _unitOfWork.GetRepository<HealthRecord>();
-                var memberHealthRecord = await healthRecordRepo.GetAsync(memberId);
-                // Check If Member Health Record Is Null
-                if (memberHealthRecord is null) return null;
-                // Mapping From HealthRecord To HealthRecordDTO
-                var heathRecordResult = _mapper.Map<HealthRecordDTO>(memberHealthRecord);
-                return heathRecordResult;
+                // The Health Record Shares Its Primary Key With The Member It Belongs To.
+                var memberHealthRecord = await _unitOfWork.GetRepository<HealthRecord>().GetAsync(memberId);
+                return memberHealthRecord is null ? null : _mapper.Map<HealthRecordDTO>(memberHealthRecord);
             } catch (Exception) {
                 return null;
             }
         }
+
         public async Task<MemberToUpdateDTO?> GetMemberToUpdate(int memberId) {
             var member = await _unitOfWork.GetRepository<Member>().GetAsync(new MemberWithHealthRecordSpecification(memberId));
-            if(member is null) return null;
-            var memberResult = _mapper.Map<MemberToUpdateDTO>(member);
-            return memberResult;
+            return member is null ? null : _mapper.Map<MemberToUpdateDTO>(member);
         }
+
         public async Task<bool> UpdateMemberDetails(int memberId, MemberToUpdateDTO memberToUpdateDTO) {
             try {
-                // Gat Repository
                 var memberRepo = _unitOfWork.GetRepository<Member>();
-                // Check If User Insert Email or Phone Is Already Exist
                 if (await IsEmailExist(memberId, memberToUpdateDTO.Email) || await IsPhoneExist(memberId, memberToUpdateDTO.Phone)) return false;
-                // Get The Member From Database And Check
+
                 var memberToUpdate = await memberRepo.GetAsync(new MemberWithHealthRecordSpecification(memberId));
                 if (memberToUpdate is null) return false;
-                // Update The Member Details
+
                 memberToUpdate.Name = memberToUpdateDTO.Name;
                 memberToUpdate.Email = memberToUpdateDTO.Email;
                 memberToUpdate.Phone = memberToUpdateDTO.Phone;
+                memberToUpdate.Photo = memberToUpdateDTO.Photo;
                 memberToUpdate.Address.BuildingNumber = memberToUpdateDTO.BuildingNumber;
                 memberToUpdate.Address.Street = memberToUpdateDTO.Street;
                 memberToUpdate.Address.City = memberToUpdateDTO.City;
@@ -105,62 +122,62 @@ namespace Services.Implmentations {
                 memberToUpdate.HealthRecord.BloodType = memberToUpdateDTO.HealthRecordDTO.BloodType;
                 memberToUpdate.HealthRecord.Note = memberToUpdateDTO.HealthRecordDTO.Note;
                 memberToUpdate.UpdatedAt = DateOnly.FromDateTime(DateTime.Now);
-                // Update Member In Database
+
                 memberRepo.Update(memberToUpdate);
                 return await _unitOfWork.SaveChangesAsync() > 0;
             } catch (Exception) {
                 return false;
             }
-
         }
+
         public async Task<bool> RemoveMember(int memberId) {
             var memberRepo = _unitOfWork.GetRepository<Member>();
-            // Get Member With His Session
             var member = await memberRepo.GetAsync(new MemberWitSessionSpecification(memberId));
             if (member is null) return false;
-            // Get Member Sessions To Check That The Selected Member Does Not Has Any Booking Session
-            var ActiveMemberSessions = await _unitOfWork.GetRepository<MemberSession>()
-                                                           .GetAllAsync(X => X.MemberId == memberId && X.Session.StartDate > DateTime.Now);
-            if (ActiveMemberSessions.Any()) return false;
-            // Get MemberShips To Delete It Then Delete The Member
-            var memberShips = await _unitOfWork.GetRepository<MemberShip>().GetAllAsync(X => X.MemberId == memberId);
+
+            // A Member Booked Into A Class That Has Not Run Yet Cannot Simply Vanish.
+            var activeMemberSessions = await _unitOfWork.GetRepository<MemberSession>()
+                                                        .GetAllAsync(X => X.MemberId == memberId && X.Session.StartDate > DateTime.Now);
+            if (activeMemberSessions.Any()) return false;
+
             try {
-                if (memberShips.Any()) {
-                    foreach (var membership in memberShips) {
-                        _unitOfWork.GetRepository<MemberShip>().Delete(membership);
-                    }
-                }
-                _unitOfWork.GetRepository<Member>().Delete(member);
+                // Memberships And Past Bookings Cascade From The Member Row Itself.
+                memberRepo.Delete(member);
                 return await _unitOfWork.SaveChangesAsync() > 0;
             } catch (Exception) {
                 return false;
             }
         }
-        
+
+        public async Task<IEnumerable<MembershipDTO>> GetMemberMemberships(int memberId) {
+            var memberships = await _unitOfWork.GetMembershipRepository().GetByMemberAsync(memberId);
+            return _mapper.Map<IEnumerable<MembershipDTO>>(memberships);
+        }
+
+        public async Task<IEnumerable<BookingDTO>> GetMemberBookings(int memberId) {
+            var bookings = await _unitOfWork.GetBookingRepository().GetMemberBookingsAsync(memberId);
+            return _mapper.Map<IEnumerable<BookingDTO>>(bookings);
+        }
+
+        public async Task<string?> GetMemberPhoto(int memberId)
+            => (await _unitOfWork.GetRepository<Member>().GetAsync(memberId))?.Photo;
+
         #region Helper Methods
         private async Task<bool> IsEmailExist(int memberId, string email) {
-            var memberRepo = _unitOfWork.GetRepository<Member>();
-            // Check If User Email Already Exist
-            var memberEmail = await memberRepo.GetAllAsync(m => m.Email == email && m.Id != memberId);
+            var memberEmail = await _unitOfWork.GetRepository<Member>().GetAllAsync(m => m.Email == email && m.Id != memberId);
             return memberEmail.Any();
         }
         private async Task<bool> IsEmailExist(string email) {
-            var memberRepo = _unitOfWork.GetRepository<Member>();
-            // Check If User Email Already Exist
-            var memberEmail = await memberRepo.GetAllAsync(m => m.Email == email);
+            var memberEmail = await _unitOfWork.GetRepository<Member>().GetAllAsync(m => m.Email == email);
             return memberEmail.Any();
         }
         private async Task<bool> IsPhoneExist(int memberId, string phone) {
-            var memberRepo = _unitOfWork.GetRepository<Member>();
-            // Check If User Email Already Exist
-            var memberPhoto = await memberRepo.GetAllAsync(m => m.Phone == phone && m.Id != memberId);
-            return memberPhoto.Any();
+            var memberPhone = await _unitOfWork.GetRepository<Member>().GetAllAsync(m => m.Phone == phone && m.Id != memberId);
+            return memberPhone.Any();
         }
         private async Task<bool> IsPhoneExist(string phone) {
-            var memberRepo = _unitOfWork.GetRepository<Member>();
-            // Check If User Email Already Exist
-            var memberPhoto = await memberRepo.GetAllAsync(m => m.Phone == phone);
-            return memberPhoto.Any();
+            var memberPhone = await _unitOfWork.GetRepository<Member>().GetAllAsync(m => m.Phone == phone);
+            return memberPhone.Any();
         }
         #endregion
     }

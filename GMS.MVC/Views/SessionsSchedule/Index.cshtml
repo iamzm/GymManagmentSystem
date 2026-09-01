@@ -1,0 +1,122 @@
+﻿@model WeeklyScheduleDTO
+@{
+    ViewData["Title"] = "Sessions Schedule";
+    ViewData["Crumb"] = Model.Range;
+    var isStaff = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Trainer);
+    var fillPercent = Model.TotalCapacity == 0 ? 0
+        : Math.Clamp((int)Math.Round(Model.TotalBookings * 100d / Model.TotalCapacity), 0, 100);
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Overview</div>
+        <h1 class="page-head__title">Weekly Schedule</h1>
+        <p class="page-head__sub">
+            @Model.Range ·
+            @Model.TotalSessions class@(Model.TotalSessions == 1 ? "" : "es") ·
+            @Model.TotalBookings of @Model.TotalCapacity seats booked
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost btn-icon-only" asp-action="Index" asp-route-week="@Model.PreviousWeek.ToString("yyyy-MM-dd")" title="Previous week">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <a class="btn-app @(Model.IsCurrentWeek ? "btn-app--soft is-disabled" : "btn-app--ghost")" asp-action="Index">
+            <i class="bi bi-calendar-day"></i> This week
+        </a>
+        <a class="btn-app btn-app--ghost btn-icon-only" asp-action="Index" asp-route-week="@Model.NextWeek.ToString("yyyy-MM-dd")" title="Next week">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+        @if (User.IsInRole(AppRoles.Admin)) {
+            <a class="btn-app btn-app--primary" asp-controller="Session" asp-action="Create">
+                <i class="bi bi-calendar-plus"></i> Add Session
+            </a>
+        }
+    </div>
+</div>
+
+@if (Model.TotalSessions > 0) {
+    <div class="card-app mb-4">
+        <div class="card-app__body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-600">Seats filled this week</span>
+                <span class="mono-num text-muted-2">@Model.TotalBookings / @Model.TotalCapacity · @fillPercent%</span>
+            </div>
+            <div class="meter @(fillPercent >= 90 ? "meter--danger" : fillPercent >= 70 ? "meter--warn" : "meter--ok")">
+                <div class="meter__fill" style="width:@(fillPercent)%"></div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="week-grid">
+    @foreach (var day in Model.Days) {
+        <div class="week-col @(day.IsToday ? "is-today" : "")">
+            <div class="week-col__head">
+                <div class="week-col__day">@day.DayName</div>
+                <div class="week-col__date">@day.DayNumber</div>
+                <div class="week-col__day">@day.MonthName</div>
+            </div>
+
+            <div class="week-col__body">
+                @if (day.Slots.Count > 0) {
+                    @foreach (var slot in day.Slots) {
+                        var slotClass = slot.IsFull && slot.Status == "Upcoming"
+                            ? "slot-card--full"
+                            : $"slot-card--{slot.Status.ToLowerInvariant()}";
+                        <a class="slot-card @slotClass" asp-action="Roster" asp-route-id="@slot.SessionId">
+                            <div class="slot-card__time">@slot.TimeRange</div>
+                            <div class="slot-card__title">@slot.CategoryName</div>
+                            <div class="slot-card__meta">
+                                <i class="bi bi-person"></i>@slot.TrainerName
+                            </div>
+                            <div class="slot-card__meta mt-1">
+                                <i class="bi bi-people"></i>
+                                <span class="mono-num">@slot.BookedSlots/@slot.Capacity</span>
+                                @if (slot.IsFull) {
+                                    <span class="pill pill--danger ms-1" style="padding:0 7px">Full</span>
+                                }
+                            </div>
+                        </a>
+                    }
+                }
+                else {
+                    <div class="week-col__empty">
+                        <i class="bi bi-dash-circle d-block mb-1"></i>
+                        No classes
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.TotalSessions == 0) {
+    <div class="card-app mt-4">
+        <div class="empty-state">
+            <div class="empty-state__icon"><i class="bi bi-calendar-week"></i></div>
+            <h2 class="empty-state__title">Nothing scheduled this week</h2>
+            <p class="empty-state__text">
+                There are no classes between @Model.WeekStart.ToString("MMM dd") and @Model.WeekEnd.ToString("MMM dd").
+                Try another week, or schedule something new.
+            </p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <a class="btn-app btn-app--ghost" asp-action="Index" asp-route-week="@Model.NextWeek.ToString("yyyy-MM-dd")">
+                    <i class="bi bi-chevron-right"></i> Next week
+                </a>
+                @if (User.IsInRole(AppRoles.Admin)) {
+                    <a class="btn-app btn-app--primary" asp-controller="Session" asp-action="Create">
+                        <i class="bi bi-calendar-plus"></i> Add Session
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (isStaff && Model.TotalSessions > 0) {
+    <p class="text-muted-2 fs-14 mt-4 mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Select any class to see who's booked and manage its roster.
+    </p>
+}

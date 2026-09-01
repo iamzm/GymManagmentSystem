@@ -1,0 +1,121 @@
+﻿@model MembershipDetailsDTO
+@{
+    ViewData["Title"] = "Membership";
+    ViewData["Crumb"] = $"{Model.MemberName} · {Model.PlanName}";
+    var isAdmin = User.IsInRole(AppRoles.Admin);
+    var meterClass = Model.ProgressPercent >= 90 ? "meter--danger" : Model.ProgressPercent >= 70 ? "meter--warn" : "meter--ok";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations · Memberships</div>
+        <h1 class="page-head__title">Contract #@Model.Id</h1>
+        <p class="page-head__sub">@Model.MemberName on @Model.PlanName</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+        @if (isAdmin) {
+            <a class="btn-app btn-app--ghost btn-app--danger" asp-action="Cancel" asp-route-id="@Model.Id">
+                <i class="bi bi-x-circle"></i> Cancel
+            </a>
+            <a class="btn-app btn-app--primary" asp-action="Renew" asp-route-id="@Model.Id">
+                <i class="bi bi-arrow-repeat"></i> Renew
+            </a>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-4">
+        <div class="card-app">
+            <div class="card-app__body text-center">
+                <partial name="_Avatar" model="@(new AvatarModel { Name = Model.MemberName, Photo = Model.MemberPhoto, Folder = "members", Size = "xl" })" />
+                <h2 class="h4 mt-3 mb-1">@Model.MemberName</h2>
+                <p class="text-muted-2 mb-1">@Model.MemberEmail</p>
+                <p class="text-muted-2 mono-num fs-14 mb-3">@Model.MemberPhone</p>
+                <partial name="_StatusPill" model="@(Model.IsExpiringSoon ? "Expiring" : Model.Status)" />
+            </div>
+            <div class="card-app__foot">
+                <a class="btn-app btn-app--ghost btn-app--block btn-app--sm" asp-controller="Members" asp-action="MemberDetails" asp-route-id="@Model.MemberId">
+                    <i class="bi bi-person-lines-fill"></i> Open member profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card-app mb-4">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-hourglass-split"></i></span>
+                <div>
+                    <h2 class="card-app__title">Contract progress</h2>
+                    <p class="card-app__sub">
+                        @if (Model.IsActive) {
+                            <span>@Model.DaysRemaining of @Model.PlanDurationDays days left</span>
+                        }
+                        else {
+                            <span>Expired on @Model.EndDate.ToString("MMMM dd, yyyy")</span>
+                        }
+                    </p>
+                </div>
+            </div>
+            <div class="card-app__body">
+                <div class="meter @meterClass mb-2" style="height:10px">
+                    <div class="meter__fill" style="width:@(Model.ProgressPercent)%"></div>
+                </div>
+                <div class="d-flex justify-content-between fs-13 text-muted-2 mono-num">
+                    <span>@Model.StartDate.ToString("MMM dd, yyyy")</span>
+                    <span>@Model.ProgressPercent% elapsed</span>
+                    <span>@Model.EndDate.ToString("MMM dd, yyyy")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-app">
+            <div class="card-app__head">
+                <span class="icon-chip"><i class="bi bi-receipt"></i></span>
+                <div><h2 class="card-app__title">Contract details</h2></div>
+            </div>
+            <div class="card-app__body">
+                <div class="detail-grid mb-3">
+                    <div class="detail-item">
+                        <div class="detail-item__label">Plan</div>
+                        <div class="detail-item__value">@Model.PlanName</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Price Paid</div>
+                        <div class="detail-item__value mono-num">@Model.PricePaid.ToString("N0") EGP</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Plan Duration</div>
+                        <div class="detail-item__value mono-num">@Model.PlanDurationDays days</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Start Date</div>
+                        <div class="detail-item__value mono-num">@Model.StartDate.ToString("MMM dd, yyyy")</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">End Date</div>
+                        <div class="detail-item__value mono-num">@Model.EndDate.ToString("MMM dd, yyyy")</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Current Plan Price</div>
+                        <div class="detail-item__value mono-num">@Model.PlanCurrentPrice.ToString("N0") EGP</div>
+                    </div>
+                </div>
+
+                @if (Model.PricePaid != Model.PlanCurrentPrice) {
+                    <div class="alert-app alert-app--info mb-0">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <div>
+                            The plan now sells for @Model.PlanCurrentPrice.ToString("N0") EGP. This contract
+                            keeps the @Model.PricePaid.ToString("N0") EGP it was sold at.
+                        </div>
+                    </div>
+                }
+
+                <p class="text-muted-2 fs-14 mt-3 mb-0">@Model.PlanDescription</p>
+            </div>
+        </div>
+    </div>
+</div>

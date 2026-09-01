@@ -3,7 +3,7 @@ using Shared.DTOs.TrainerDTOs;
 
 namespace Services.Abstraction.Contract {
     public interface ISessionService {
-        Task<IEnumerable<SessionDTO>> GetAllSessions();
+        Task<IEnumerable<SessionDTO>> GetAllSessions(string? search = null, string? status = null);
         Task<SessionDTO?> GetSessionById(int sessionId);
         Task<bool> CreateSession(CreateSessionDTO createSessionDTO);
         Task<UpdateSessionDTO?> GetSessionToUpdate(int sessionId);
