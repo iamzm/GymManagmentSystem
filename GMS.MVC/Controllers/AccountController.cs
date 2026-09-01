@@ -1,14 +1,18 @@
 ﻿using GMS.MVC.Models;
+using GMS.MVC.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Presistence.Identity;
+using System.Text;
 
 namespace GMS.MVC.Controllers {
     [Authorize]
     public class AccountController(
         UserManager<AppUser> _userManager,
         SignInManager<AppUser> _signInManager,
+        IEmailSender _emailSender,
         ILogger<AccountController> _logger) : Controller {
 
         #region ==== Login ====
@@ -166,12 +170,147 @@ namespace GMS.MVC.Controllers {
         }
         #endregion
 
+        #region ==== Forgot Password ====
+        [AllowAnonymous]
+        public IActionResult ForgotPassword() {
+            if (User.Identity?.IsAuthenticated == true) return RedirectToAction(nameof(ChangePassword));
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel forgotPasswordViewModel) {
+            if (!ModelState.IsValid) return View(forgotPasswordViewModel);
+
+            var user = await _userManager.FindByEmailAsync(forgotPasswordViewModel.Email);
+
+            // The Confirmation Is Identical Whether Or Not The Account Exists. Saying "no such
+            // account" here would turn this form into a way to discover who is registered.
+            if (user is not null && user.IsActive) {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+                var resetUrl = Url.Action(
+                    nameof(ResetPassword), "Account",
+                    new { email = user.Email, token = encodedToken },
+                    protocol: Request.Scheme);
+
+                await _emailSender.SendAsync(
+                    user.Email!, user.FullName,
+                    "Reset your Power Fitness password",
+                    BuildResetEmailHtml(user.FullName, resetUrl!),
+                    BuildResetEmailText(user.FullName, resetUrl!));
+
+                _logger.LogInformation("Password reset requested for {Email}.", user.Email);
+            }
+            else {
+                _logger.LogInformation(
+                    "Password reset requested for {Email}, which has no active account. " +
+                    "The same confirmation was shown, so the form cannot be used to discover accounts.",
+                    forgotPasswordViewModel.Email);
+            }
+
+            return RedirectToAction(nameof(ForgotPasswordConfirmation), new { email = forgotPasswordViewModel.Email });
+        }
+
+        [AllowAnonymous]
+        public IActionResult ForgotPasswordConfirmation(string? email) {
+            ViewBag.Email = email;
+            return View();
+        }
+        #endregion
+
+        #region ==== Reset Password ====
+        [AllowAnonymous]
+        public IActionResult ResetPassword(string? email, string? token) {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
+                return View("ResetPasswordInvalid");
+
+            return View(new ResetPasswordViewModel { Email = email, Token = token });
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel resetPasswordViewModel) {
+            if (!ModelState.IsValid) return View(resetPasswordViewModel);
+
+            var user = await _userManager.FindByEmailAsync(resetPasswordViewModel.Email);
+
+            // A Missing Account Gets The Same Confirmation As A Successful Reset, For The Same
+            // Reason As Above.
+            if (user is null) return RedirectToAction(nameof(ResetPasswordConfirmation));
+
+            string token;
+            try {
+                token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(resetPasswordViewModel.Token));
+            } catch (FormatException) {
+                ModelState.AddModelError(string.Empty, "That Reset Link Is Not Valid. Please Request A New One.");
+                return View(resetPasswordViewModel);
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, token, resetPasswordViewModel.Password);
+
+            if (!result.Succeeded) {
+                foreach (var error in result.Errors) ModelState.AddModelError(string.Empty, error.Description);
+                return View(resetPasswordViewModel);
+            }
+
+            // Whoever Is Resetting Has Just Proved They Own The Mailbox, And Being Locked Out Is
+            // Usually Why They Are Here. Leaving The Lockout In Place Would Refuse The Password
+            // They Just Set.
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            await _userManager.ResetAccessFailedCountAsync(user);
+
+            _logger.LogInformation("Password reset completed for {Email}.", user.Email);
+            return RedirectToAction(nameof(ResetPasswordConfirmation));
+        }
+
+        [AllowAnonymous]
+        public IActionResult ResetPasswordConfirmation() => View();
+        #endregion
+
         #region ==== Access Denied ====
         [AllowAnonymous]
         public IActionResult AccessDenied(string? returnUrl = null) {
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
+        #endregion
+
+        #region ==== Reset Email Bodies ====
+        private static string BuildResetEmailHtml(string name, string resetUrl) => $"""
+            <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:520px;color:#150f24">
+              <h2 style="color:#5b21b6;margin:0 0 12px">Reset your password</h2>
+              <p>Hi {name},</p>
+              <p>Someone asked to reset the password for your Power Fitness account. Use the button
+                 below to choose a new one. The link is single-use and expires in a day.</p>
+              <p style="margin:24px 0">
+                <a href="{resetUrl}"
+                   style="background:#5b21b6;color:#fff;padding:12px 22px;border-radius:12px;
+                          text-decoration:none;font-weight:600;display:inline-block">Choose a new password</a>
+              </p>
+              <p style="color:#6b6486;font-size:13px">
+                If the button does not work, paste this into your browser:<br />
+                <span style="word-break:break-all">{resetUrl}</span>
+              </p>
+              <p style="color:#6b6486;font-size:13px">
+                If you did not ask for this, you can ignore this email — nothing has changed.
+              </p>
+            </div>
+            """;
+
+        private static string BuildResetEmailText(string name, string resetUrl) => $"""
+            Hi {name},
+
+            Someone asked to reset the password for your Power Fitness account.
+            Open this link to choose a new one. It is single-use and expires in a day.
+
+            {resetUrl}
+
+            If you did not ask for this, you can ignore this email — nothing has changed.
+            """;
         #endregion
 
         #region ==== Helper Method ====

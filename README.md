@@ -11,7 +11,7 @@ Power Fitness is split into distinct modules, each responsible for one part of t
 | Module | Description |
 |---|---|
 | 🌐 **Public site** | Marketing landing page driven by real data: live member/trainer counters, the plans actually on sale and the classes genuinely coming up this week. |
-| 🔐 **Accounts** | ASP.NET Core Identity: sign-in, self-registration, password change, profile, and role-based access (Admin / Trainer / Member). |
+| 🔐 **Accounts** | ASP.NET Core Identity: sign-in, self-registration, forgot/reset password, password change, profile, and role-based access (Admin / Trainer / Member). |
 | 📊 **Dashboard** | The signed-in home screen: live gym metrics, booking-activity chart, plan distribution, renewals due and the week ahead. |
 | 👥 **Members** | Register and manage members, with photo upload, a personal health record (incl. derived BMI), search and status filters. |
 | 🏋️ **Trainers** | Trainer profiles with a specialty, photo, workload counters and the classes they lead. |
@@ -87,6 +87,19 @@ Built on **ASP.NET Core Identity** with cookie authentication and a **fallback a
 | **Trainer** | Read the gym records and the timetable; book and release class seats. |
 | **Member** | Browse plans and the weekly class schedule. |
 
+### Forgot password
+
+`/Account/ForgotPassword` emails a single-use link that expires in a day. The details that matter:
+
+- **No account enumeration.** A registered address and an unknown one get byte-identical confirmation pages, so the form cannot be used to discover who has an account.
+- **A successful reset clears the lockout.** Whoever completes it has just proved they own the mailbox, and being locked out is usually *why* they are there — leaving the lockout would refuse the password they just set.
+- **Tokens are single-use.** Replaying a used link fails with "Invalid token."
+- The reset link is never rendered in the browser, only emailed.
+
+**Email delivery** is configured in the `Email` section. With `Email:Enabled` false — the default — nothing is sent and the reset link is written to the application log instead, so the flow is usable before mail is set up. Fill in `Host`, `Port`, `UserName`, `Password` and `FromAddress` to send for real (MailKit, STARTTLS on 587 by default).
+
+**Behind a reverse proxy**, the app reads `X-Forwarded-Proto` / `X-Forwarded-Host` so reset links are built with the public scheme and domain rather than the internal address. Make sure nginx / IIS actually sends those headers.
+
 **How it is enforced**
 - Named policies (`AppPolicies.AdminOnly`, `AppPolicies.StaffOnly`) instead of role strings scattered through the controllers.
 - Role names live in `AppRoles` constants, so a typo becomes a compile error rather than a silent lockout.
@@ -103,6 +116,8 @@ Two things to know before assuming the password is wrong:
 - **`appsettings.Development.json` is not loaded outside Development.** Deploying with `ASPNETCORE_ENVIRONMENT=Production` and no `Seed__AdminPassword` means `Seed:AdminPassword` is blank, so **no administrator is seeded at all** — the app logs a warning saying exactly that on startup.
 
 Which of the two you are hitting is easy to tell apart from the message: *"Incorrect Email Or Password"* means the account does not exist or the password is wrong; *"This Account Is Locked…"* means the account **does** exist and you are inside the lockout window.
+
+A member or trainer who forgets their password can just use **Forgot password** on the sign-in page. The steps below are for the administrator account, or for when mail is not configured yet.
 
 To reset the password and clear the lockout, restart once with:
 

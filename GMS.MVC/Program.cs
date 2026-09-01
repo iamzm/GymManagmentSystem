@@ -1,6 +1,7 @@
 using Domin.Contract;
 using GMS.MVC.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Presistence.Data;
@@ -89,6 +90,16 @@ namespace GMS.MVC {
             builder.Services.Configure<CurrencyOptions>(builder.Configuration.GetSection(CurrencyOptions.SectionName));
             builder.Services.AddSingleton<IMoneyFormatter, MoneyFormatter>();
 
+            #region Email
+            builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+            var emailOptions = builder.Configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new EmailOptions();
+
+            // With No SMTP Server Configured The App Still Works — Reset Links Go To The Log
+            // Rather Than Vanishing Silently, So The Flow Is Usable Before Mail Is Set Up.
+            if (emailOptions.IsConfigured) builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+            else builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+            #endregion
+
             // Add AutoMapper To Services
             builder.Services.AddAutoMapper(M => {
                 M.AddProfile(new MemberProfile());
@@ -101,6 +112,19 @@ namespace GMS.MVC {
 
             #endregion
 
+            #region Reverse Proxy
+            // Deployed Behind nginx / IIS, The App Sees The Proxy's Own Scheme And Host. Password
+            // Reset Links Are Built From Those, So Without This They Come Out As http:// Or Point
+            // At The Internal Address Instead Of The Public Domain.
+            builder.Services.Configure<ForwardedHeadersOptions>(options => {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+                // The Proxy Is On The Same Host And Is Not In A Known Network Range By Default;
+                // Clearing These Trusts It. Safe Because Nothing Else Can Reach The App Directly.
+                options.KnownIPNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+            #endregion
+
             var app = builder.Build();
 
             #region Add Kestrel Middelware
@@ -110,6 +134,10 @@ namespace GMS.MVC {
                 var dbInitilaizer = scope.ServiceProvider.GetRequiredService<IDbInitilazer>();
                 await dbInitilaizer.InitilazeAsync();
             }
+
+            // Must Run Before Anything That Reads The Scheme Or Host — Including HTTPS Redirection
+            // And The Link Building Behind Password Reset Emails.
+            app.UseForwardedHeaders();
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment()) {
