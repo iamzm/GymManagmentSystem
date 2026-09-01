@@ -1,0 +1,231 @@
+﻿@model MyMembershipDTO
+@{
+    ViewData["Title"] = "My Plan";
+    ViewData["Crumb"] = "Your membership and what's next";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Account</div>
+        <h1 class="page-head__title">My Plan</h1>
+        <p class="page-head__sub">Upgrade or downgrade whenever you like — the switch waits until your paid-for term ends.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-controller="SessionsSchedule" asp-action="Index">
+            <i class="bi bi-calendar-week"></i> Class schedule
+        </a>
+    </div>
+</div>
+
+@* ---------- Current term ---------- *@
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-7">
+        @if (Model.Current is not null) {
+            var current = Model.Current;
+            var meterClass = current.ProgressPercent >= 90 ? "meter--danger" : current.ProgressPercent >= 70 ? "meter--warn" : "meter--ok";
+            <div class="card-app h-100">
+                <div class="card-app__head">
+                    <span class="icon-chip"><i class="bi bi-patch-check"></i></span>
+                    <div>
+                        <h2 class="card-app__title">Current plan</h2>
+                        <p class="card-app__sub">Running now</p>
+                    </div>
+                    <span class="ms-auto"><partial name="_StatusPill" model="@("Active")" /></span>
+                </div>
+                <div class="card-app__body">
+                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                        <span class="h3 mb-0">@current.PlanName</span>
+                        <span class="text-muted-2 mono-num">@current.PricePaid.ToString("N0") EGP</span>
+                    </div>
+                    <p class="text-muted-2 fs-14">@current.PlanDescription</p>
+
+                    <div class="meter @meterClass mb-2" style="height:10px">
+                        <div class="meter__fill" style="width:@(current.ProgressPercent)%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between fs-13 text-muted-2 mono-num mb-4">
+                        <span>@current.StartDate.ToString("MMM dd, yyyy")</span>
+                        <span>@current.DaysRemaining day@(current.DaysRemaining == 1 ? "" : "s") left</span>
+                        <span>@current.EndDate.ToString("MMM dd, yyyy")</span>
+                    </div>
+
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-item__label">Renews / ends on</div>
+                            <div class="detail-item__value mono-num">@current.EndDate.ToString("MMM dd, yyyy")</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-item__label">Term length</div>
+                            <div class="detail-item__value mono-num">@current.PlanDurationDays days</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else {
+            <div class="card-app h-100">
+                <div class="empty-state">
+                    <div class="empty-state__icon"><i class="bi bi-card-checklist"></i></div>
+                    <h2 class="empty-state__title">You're not subscribed yet</h2>
+                    <p class="empty-state__text">
+                        Pick a plan below to start training. It begins today, and you'll be able to
+                        book classes straight away.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+
+    @* ---------- Booked change ---------- *@
+    <div class="col-12 col-lg-5">
+        @if (Model.HasScheduledChange) {
+            var next = Model.Scheduled!;
+            <div class="card-app h-100" style="border-color:var(--brand-300)">
+                <div class="card-app__head">
+                    <span class="icon-chip"><i class="bi bi-arrow-right-circle"></i></span>
+                    <div>
+                        <h2 class="card-app__title">Coming up next</h2>
+                        <p class="card-app__sub">Takes over automatically</p>
+                    </div>
+                    <span class="ms-auto"><partial name="_StatusPill" model="@("Scheduled")" /></span>
+                </div>
+                <div class="card-app__body">
+                    <div class="d-flex align-items-baseline gap-2 mb-3">
+                        <span class="h4 mb-0">@next.PlanName</span>
+                        <span class="text-muted-2 mono-num">@next.PricePaid.ToString("N0") EGP</span>
+                    </div>
+
+                    <div class="p-3 rounded-3 mb-3" style="background:var(--brand-50)">
+                        <div class="detail-item__label" style="color:var(--brand-on-soft)">Starts on</div>
+                        <div class="h5 mb-1 mono-num" style="color:var(--brand-on-soft)">@next.StartDate.ToString("MMMM dd, yyyy")</div>
+                        <div class="fs-13" style="color:var(--brand-on-soft)">
+                            in @next.DaysUntilStart day@(next.DaysUntilStart == 1 ? "" : "s") · runs to @next.EndDate.ToString("MMM dd, yyyy")
+                        </div>
+                    </div>
+
+                    <p class="fs-14 text-muted-2 mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Nothing changes before then — you keep everything on your current plan until it ends.
+                    </p>
+                </div>
+                <div class="card-app__foot">
+                    <form asp-action="CancelChange" method="post" class="m-0"
+                          data-confirm="Cancel the switch to @next.PlanName and stay on your current plan?">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-app btn-app--ghost btn-app--danger btn-app--block btn-app--sm">
+                            <i class="bi bi-x-circle"></i> Cancel this change
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+        else if (Model.HasActivePlan) {
+            <div class="card-app h-100">
+                <div class="card-app__head">
+                    <span class="icon-chip"><i class="bi bi-arrow-repeat"></i></span>
+                    <div><h2 class="card-app__title">Coming up next</h2></div>
+                </div>
+                <div class="card-app__body d-flex flex-column justify-content-center text-center">
+                    <div class="empty-state__icon mx-auto"><i class="bi bi-check2-circle"></i></div>
+                    <h3 class="h6 mb-2">No change booked</h3>
+                    <p class="text-muted-2 fs-14 mb-0">
+                        Choose a different plan below and it will take over on
+                        <strong class="mono-num">@Model.NextEffectiveDate.ToString("MMM dd, yyyy")</strong>.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ---------- Plan options ---------- *@
+<div class="card-app">
+    <div class="card-app__head">
+        <span class="icon-chip"><i class="bi bi-tags"></i></span>
+        <div>
+            <h2 class="card-app__title">Change your plan</h2>
+            <p class="card-app__sub">
+                @if (Model.HasActivePlan) {
+                    <span>Anything you pick starts on <strong class="mono-num">@Model.NextEffectiveDate.ToString("MMM dd, yyyy")</strong>, when your current term ends</span>
+                }
+                else {
+                    <span>Anything you pick starts today</span>
+                }
+            </p>
+        </div>
+    </div>
+    <div class="card-app__body">
+        @if (Model.Options.Count > 0) {
+            <div class="row g-4">
+                @foreach (var option in Model.Options) {
+                    var isCurrent = option.IsCurrentPlan;
+                    var isNext = option.IsScheduled;
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="pricing-card h-100 @(isNext ? "is-featured" : "")">
+                            <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                                <h3 class="h5 mb-0">@option.Name</h3>
+                                @if (isCurrent) {
+                                    <span class="pill pill--ok"><i class="bi bi-check-circle-fill"></i>Current</span>
+                                }
+                                else if (isNext) {
+                                    <span class="pill pill--brand"><i class="bi bi-calendar-event"></i>Booked</span>
+                                }
+                                else if (option.Direction == "Upgrade") {
+                                    <span class="pill pill--accent"><i class="bi bi-arrow-up"></i>Upgrade</span>
+                                }
+                                else if (option.Direction == "Downgrade") {
+                                    <span class="pill pill--muted"><i class="bi bi-arrow-down"></i>Downgrade</span>
+                                }
+                            </div>
+
+                            <div class="pricing-card__price mb-1">
+                                @option.Price.ToString("N0") <span class="fs-6 text-muted-2">EGP</span>
+                            </div>
+                            <div class="text-muted-2 fs-14 mb-2">for @option.DurationDays days</div>
+
+                            @if (!isCurrent && Model.HasActivePlan && option.PriceDifference != 0) {
+                                <div class="fs-13 mb-2 @(option.PriceDifference > 0 ? "text-brand" : "text-muted-2")">
+                                    <i class="bi @(option.PriceDifference > 0 ? "bi-arrow-up-right" : "bi-arrow-down-right")"></i>
+                                    @Math.Abs(option.PriceDifference).ToString("N0") EGP @(option.PriceDifference > 0 ? "more" : "less") per term
+                                </div>
+                            }
+
+                            <p class="text-muted-2 fs-14 flex-grow-1">@option.Description</p>
+
+                            @if (!isCurrent) {
+                                <div class="fs-13 text-subtle mb-3">
+                                    <i class="bi bi-calendar-check me-1"></i>
+                                    Starts <span class="mono-num">@option.EffectiveFrom.ToString("MMM dd")</span> ·
+                                    runs to <span class="mono-num">@option.EffectiveUntil.ToString("MMM dd, yyyy")</span>
+                                </div>
+                            }
+
+                            @if (isCurrent) {
+                                <button class="btn-app btn-app--ghost btn-app--block is-disabled" disabled>
+                                    <i class="bi bi-check-lg"></i> Your plan
+                                </button>
+                            }
+                            else if (isNext) {
+                                <button class="btn-app btn-app--soft btn-app--block is-disabled" disabled>
+                                    <i class="bi bi-calendar-check"></i> Already booked
+                                </button>
+                            }
+                            else {
+                                <a class="btn-app @(option.Direction == "Upgrade" ? "btn-app--primary" : "btn-app--ghost") btn-app--block"
+                                   asp-action="ChangePlan" asp-route-id="@option.PlanId">
+                                    Switch to @option.Name
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else {
+            <div class="empty-state py-4">
+                <div class="empty-state__icon"><i class="bi bi-tags"></i></div>
+                <h3 class="empty-state__title">No plans on sale</h3>
+                <p class="empty-state__text">There's nothing available to switch to at the moment.</p>
+            </div>
+        }
+    </div>
+</div>

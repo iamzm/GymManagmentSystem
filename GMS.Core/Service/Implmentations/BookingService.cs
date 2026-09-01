@@ -85,11 +85,15 @@ namespace Services.Implmentations {
                 if (booked >= session.Capacity)
                     return (false, $"This Class Is Full ({session.Capacity}/{session.Capacity} Seats Taken).");
 
-                var membership = await _unitOfWork.GetMembershipRepository().GetActiveForMemberAsync(member.Id);
-                if (membership is null)
-                    return (false, $"{member.Name} Has No Active Membership. Subscribe Them To A Plan First.");
-                if (membership.EndDate < session.StartDate)
-                    return (false, $"{member.Name}'s Membership Ends On {membership.EndDate:MMM dd, yyyy}, Before This Class Runs.");
+                // What Matters Is Cover On The Day Of The Class, Not Today. A Member Who Has Already
+                // Booked An Upgrade Starting Next Month Is Covered For Next Month's Classes.
+                var membershipRepo = _unitOfWork.GetMembershipRepository();
+                if (!await membershipRepo.HasCoverAtAsync(member.Id, session.StartDate)) {
+                    var active = await membershipRepo.GetActiveForMemberAsync(member.Id);
+                    return active is null
+                        ? (false, $"{member.Name} Has No Active Membership. Subscribe Them To A Plan First.")
+                        : (false, $"{member.Name}'s Membership Ends On {active.EndDate:MMM dd, yyyy}, Before This Class Runs.");
+                }
 
                 if (await bookingRepo.HasClashingBookingAsync(member.Id, session.StartDate, session.EndDate))
                     return (false, $"{member.Name} Is Already Booked Into Another Class At That Time.");
@@ -140,18 +144,20 @@ namespace Services.Implmentations {
             if (session is null) return [];
 
             var bookingRepo = _unitOfWork.GetBookingRepository();
+            var membershipRepo = _unitOfWork.GetMembershipRepository();
             var alreadyBooked = await bookingRepo.GetBookedMemberIdsAsync(sessionId);
-            var activeMemberships = await _unitOfWork.GetMembershipRepository().GetActiveByMemberAsync();
             var members = await _unitOfWork.GetRepository<Member>().GetAllAsync();
 
             var candidates = members
                 .Where(M => !alreadyBooked.Contains(M.Id))
-                .Where(M => activeMemberships.TryGetValue(M.Id, out var membership) && membership.EndDate >= session.StartDate)
                 .OrderBy(M => M.Name)
                 .ToList();
 
             var bookable = new List<MemberSelectDTO>();
             foreach (var member in candidates) {
+                // Same Four Rules The Booking Itself Enforces, So The Dropdown Never Offers
+                // A Choice That Would Only Be Rejected On Submit.
+                if (!await membershipRepo.HasCoverAtAsync(member.Id, session.StartDate)) continue;
                 if (await bookingRepo.HasClashingBookingAsync(member.Id, session.StartDate, session.EndDate)) continue;
                 bookable.Add(new MemberSelectDTO { Id = member.Id, Name = member.Name, Email = member.Email });
             }

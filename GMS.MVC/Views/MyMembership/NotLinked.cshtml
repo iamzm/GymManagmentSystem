@@ -1,0 +1,29 @@
+﻿@{
+    ViewData["Title"] = "My Plan";
+    ViewData["Crumb"] = "Account not linked to a membership record";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-7">
+        <div class="card-app">
+            <div class="empty-state">
+                <div class="empty-state__icon"><i class="bi bi-person-exclamation"></i></div>
+                <h1 class="empty-state__title">We can't find your membership record</h1>
+                <p class="empty-state__text">
+                    Your sign-in account isn't linked to a member record yet, so there's no plan to show.
+                    Records are matched on your email address — ask reception to add you, or to correct
+                    the email on your record so it matches
+                    <strong>@User.Identity?.Name</strong>.
+                </p>
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <a class="btn-app btn-app--primary" asp-controller="Plans" asp-action="Index">
+                        <i class="bi bi-tags"></i> Browse plans
+                    </a>
+                    <a class="btn-app btn-app--ghost" asp-controller="SessionsSchedule" asp-action="Index">
+                        <i class="bi bi-calendar-week"></i> Class schedule
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

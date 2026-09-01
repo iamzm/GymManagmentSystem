@@ -26,7 +26,10 @@ namespace Presistence.Data.Configurations {
 
             builder.ToTable(Tb => {
                 Tb.HasCheckConstraint("GymUserEmailValidCheck", "Email Like '_%@_%._%'");
-                Tb.HasCheckConstraint("GymUserPhoneValidCheck", "Phone Like '01%' and Phone Not Like '%[^0-9]%'");
+                // Digits Only, Nothing About A Country. Which National Numbering Plan Applies Is
+                // A Validation Rule That Belongs In The DTOs, Not Baked Into The Schema — Otherwise
+                // Serving A Different Country Means A Migration.
+                Tb.HasCheckConstraint("GymUserPhoneValidCheck", "Phone Not Like '%[^0-9]%' and Len(Phone) >= 10");
             });
 
             builder.HasIndex(X => X.Email).IsUnique();

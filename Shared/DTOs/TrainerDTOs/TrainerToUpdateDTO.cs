@@ -16,7 +16,7 @@ namespace Shared.DTOs.TrainerDTOs {
 
 		[Required(ErrorMessage = "Phone Number Is Required")]
 		[Phone(ErrorMessage = "Invalid phone number")]
-		[RegularExpression(@"^(010|011|012|015)\d{8}$", ErrorMessage = "Phone number must be a valid Egyptian mobile number")]
+		[RegularExpression(@"^03\d{9}$", ErrorMessage = "Phone Must Be A Valid Pakistani Mobile Number, e.g. 03001234567")]
 		public string Phone { get; set; } = null!;
 
 		[Required(ErrorMessage = "Building Number Is Required")]

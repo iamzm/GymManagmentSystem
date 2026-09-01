@@ -61,9 +61,13 @@
 
             <nav class="sidebar__nav">
                 <div class="sidebar__section">Overview</div>
-                <a class="@NavClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">
-                    <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
-                </a>
+                @* Members have no back-office figures to see, and the dashboard would only bounce
+                   them straight back to the schedule — so it is not offered to them. *@
+                @if (isStaff) {
+                    <a class="@NavClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">
+                        <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+                    </a>
+                }
                 <a class="@NavClass("SessionsSchedule")" asp-controller="SessionsSchedule" asp-action="Index">
                     <i class="bi bi-calendar-week"></i><span>Schedule</span>
                 </a>
@@ -92,6 +96,9 @@
                 </a>
 
                 <div class="sidebar__section">Account</div>
+                <a class="@NavClass("MyMembership")" asp-controller="MyMembership" asp-action="Index">
+                    <i class="bi bi-person-vcard"></i><span>My Plan</span>
+                </a>
                 <a class="@NavClass("Account")" asp-controller="Account" asp-action="Profile">
                     <i class="bi bi-person-circle"></i><span>My Profile</span>
                 </a>

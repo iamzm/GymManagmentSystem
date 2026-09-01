@@ -16,7 +16,7 @@ namespace Shared.DTOs.MemberDTOs {
 
         [Required(ErrorMessage = "Phone Is Required")]
         [Phone(ErrorMessage = "Invalid Phone Format")]
-        [RegularExpression(@"^(011|012|010|015)\d{8}", ErrorMessage = "Phone Must Be Valid Egyptaion Number")]
+        [RegularExpression(@"^03\d{9}$", ErrorMessage = "Phone Must Be A Valid Pakistani Mobile Number, e.g. 03001234567")]
         public string Phone { get; set; } = null!;
 
         [Required(ErrorMessage = "DateOfBirth Is Required")]

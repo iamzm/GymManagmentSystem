@@ -135,6 +135,124 @@ namespace Services.Implmentations {
             }
         }
 
+        #region ==== Member Self-Service: Upgrade / Downgrade ====
+        public async Task<MyMembershipDTO?> GetMyMembership(int memberId) {
+            var member = await _unitOfWork.GetRepository<Member>().GetAsync(memberId);
+            if (member is null) return null;
+
+            var repo = _unitOfWork.GetMembershipRepository();
+            var current = await repo.GetActiveForMemberAsync(memberId);
+            var scheduled = await repo.GetScheduledForMemberAsync(memberId);
+
+            var effectiveFrom = NextEffectiveDate(current);
+
+            var result = new MyMembershipDTO {
+                MemberId = member.Id,
+                MemberName = member.Name,
+                MemberPhoto = member.Photo,
+                NextEffectiveDate = effectiveFrom,
+                Current = current is null ? null : _mapper.Map<MembershipDetailsDTO>(await repo.GetWithMemberAndPlanAsync(current.Id)),
+                Scheduled = scheduled is null ? null : _mapper.Map<MembershipDTO>(await repo.GetWithMemberAndPlanAsync(scheduled.Id))
+            };
+
+            var currentPrice = current?.PricePaid ?? 0m;
+            var plans = await _unitOfWork.GetRepository<Plan>().GetAllAsync(P => P.IsActive);
+
+            result.Options = [.. plans
+                .OrderBy(P => P.Price)
+                .Select(P => new PlanOptionDTO {
+                    PlanId = P.Id,
+                    Name = P.Name,
+                    Description = P.Dsescription,
+                    DurationDays = P.DurationDays,
+                    Price = P.Price,
+                    CurrentPrice = currentPrice,
+                    IsCurrentPlan = current is not null && current.PlanId == P.Id,
+                    IsScheduled = scheduled is not null && scheduled.PlanId == P.Id,
+                    EffectiveFrom = effectiveFrom
+                })];
+
+            return result;
+        }
+
+        public async Task<(bool Success, string Message)> SchedulePlanChange(int memberId, int planId) {
+            try {
+                var repo = _unitOfWork.GetMembershipRepository();
+
+                var member = await _unitOfWork.GetRepository<Member>().GetAsync(memberId);
+                if (member is null) return (false, "We Could Not Find Your Membership Record.");
+
+                var plan = await _unitOfWork.GetPlanRepository().GetById(planId);
+                if (plan is null) return (false, "That Plan No Longer Exists.");
+                if (!plan.IsActive) return (false, $"'{plan.Name}' Is Not On Sale At The Moment.");
+
+                var current = await repo.GetActiveForMemberAsync(memberId);
+                var scheduled = await repo.GetScheduledForMemberAsync(memberId);
+
+                if (current is not null && current.PlanId == planId && scheduled is null)
+                    return (false, $"You Are Already On '{plan.Name}'.");
+
+                // The Change Begins The Day The Paid-For Term Runs Out, So The Member Keeps
+                // Everything They Have Already Paid For And Cover Never Breaks.
+                var startsOn = NextEffectiveDate(current);
+                var startsAt = startsOn.ToDateTime(TimeOnly.MinValue);
+
+                // Only One Change Can Be Queued; Choosing Again Replaces The Last Choice.
+                if (scheduled is not null) {
+                    var existing = await repo.GetAsync(scheduled.Id);
+                    if (existing is not null) repo.Delete(existing);
+                }
+
+                await repo.AddAsync(new MemberShip {
+                    MemberId = memberId,
+                    PlanId = plan.Id,
+                    CreatedAt = startsOn,
+                    UpdatedAt = DateOnly.FromDateTime(DateTime.Now),
+                    EndDate = startsAt.AddDays(plan.DurationDays),
+                    PricePaid = plan.Price
+                });
+
+                if (await _unitOfWork.SaveChangesAsync() <= 0)
+                    return (false, "The Plan Change Could Not Be Saved.");
+
+                return (true, current is null
+                    ? $"You Are Subscribed To '{plan.Name}', Running Until {startsAt.AddDays(plan.DurationDays):MMM dd, yyyy}."
+                    : $"'{plan.Name}' Takes Over On {startsOn:MMM dd, yyyy}, When Your Current Term Ends. Nothing Changes Before Then.");
+            } catch (Exception) {
+                return (false, "Changing The Plan Failed. Please Try Again.");
+            }
+        }
+
+        public async Task<(bool Success, string Message)> CancelScheduledChange(int memberId) {
+            try {
+                var repo = _unitOfWork.GetMembershipRepository();
+                var scheduled = await repo.GetScheduledForMemberAsync(memberId);
+                if (scheduled is null) return (false, "There Is No Upcoming Plan Change To Cancel.");
+
+                var tracked = await repo.GetAsync(scheduled.Id);
+                if (tracked is null) return (false, "There Is No Upcoming Plan Change To Cancel.");
+
+                repo.Delete(tracked);
+                return await _unitOfWork.SaveChangesAsync() > 0
+                    ? (true, "The Upcoming Plan Change Was Cancelled. You Stay On Your Current Plan.")
+                    : (false, "The Plan Change Could Not Be Cancelled.");
+            } catch (Exception) {
+                return (false, "Cancelling The Plan Change Failed.");
+            }
+        }
+
+        /// <summary>
+        /// When A Change Chosen Now Would Begin: The Day After The Current Term's Last Day, Or
+        /// Today When Nothing Is Running. A Term Ending On The 10th Hands Over On The 10th.
+        /// </summary>
+        private static DateOnly NextEffectiveDate(MemberShip? current) {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            if (current is null) return today;
+            var endsOn = DateOnly.FromDateTime(current.EndDate);
+            return endsOn > today ? endsOn : today;
+        }
+        #endregion
+
         public async Task<IEnumerable<MemberSelectDTO>> GetMembersForDropdown() {
             var members = await _unitOfWork.GetRepository<Member>().GetAllAsync();
             return members

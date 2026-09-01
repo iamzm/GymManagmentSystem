@@ -27,6 +27,7 @@ namespace Presistence.Data {
             await SeedRolesAsync();
             await SeedAdminAsync();
 
+            if (_seedOptions.ResetDemoData) await ResetDemoDataAsync();
             if (_seedOptions.SeedDemoData) await SeedDemoDataAsync();
         }
 
@@ -96,6 +97,44 @@ namespace Presistence.Data {
 
         #region ==== Demo Data ====
         /// <summary>
+        /// Clears The People-Shaped Content So A Fresh Sample Set Can Replace It. Deliberately
+        /// Narrow: Plans, Categories And Login Accounts Survive, Because Those Are Configuration
+        /// And Credentials Rather Than Sample Records.
+        /// </summary>
+        private async Task ResetDemoDataAsync() {
+            var memberCount = await _dbContext.Members.CountAsync();
+            var trainerCount = await _dbContext.Trainers.CountAsync();
+            if (memberCount == 0 && trainerCount == 0) return;
+
+            _logger.LogWarning(
+                "Seed:ResetDemoData is on — deleting {Members} member(s) and {Trainers} trainer(s) " +
+                "with their sessions, memberships and bookings. Turn it off after the reload so it " +
+                "does not run again on the next start.",
+                memberCount, trainerCount);
+
+            // Children First: The Cascades Would Cover Most Of This, But Being Explicit Keeps The
+            // Order Obvious And Survives Anyone Changing A Delete Behaviour Later.
+            _dbContext.MemberSessions.RemoveRange(_dbContext.MemberSessions);
+            _dbContext.MemberShips.RemoveRange(_dbContext.MemberShips);
+            await _dbContext.SaveChangesAsync();
+
+            _dbContext.Sessions.RemoveRange(_dbContext.Sessions);
+            await _dbContext.SaveChangesAsync();
+
+            _dbContext.Members.RemoveRange(_dbContext.Members);
+            _dbContext.Trainers.RemoveRange(_dbContext.Trainers);
+            await _dbContext.SaveChangesAsync();
+
+            // Those Member Rows Are Gone, So Any Account Pointing At One Is Now Pointing At Nothing.
+            var linked = await _dbContext.Users.Where(U => U.MemberId != null || U.TrainerId != null).ToListAsync();
+            foreach (var user in linked) {
+                user.MemberId = null;
+                user.TrainerId = null;
+            }
+            if (linked.Count > 0) await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
         /// Optional Sample Records So A Freshly Cloned Copy Shows A Populated Dashboard Instead
         /// Of Six Zeroes. Controlled By <c>Seed:DemoData</c> And Skipped Once Members Exist.
         /// </summary>
@@ -103,20 +142,20 @@ namespace Presistence.Data {
             if (await _dbContext.Members.AnyAsync() || await _dbContext.Trainers.AnyAsync()) return;
 
             var trainers = new List<Trainer> {
-                NewTrainer("Omar Hassan", "omar.hassan@powerfitness.com", "01012345601", Gender.Male, Specialties.Bodybuilding, 1994),
-                NewTrainer("Nadia Farouk", "nadia.farouk@powerfitness.com", "01012345602", Gender.Female, Specialties.WeightLoss, 1991),
-                NewTrainer("Karim Adel", "karim.adel@powerfitness.com", "01012345603", Gender.Male, Specialties.CrossFit, 1989),
-                NewTrainer("Salma Nabil", "salma.nabil@powerfitness.com", "01012345604", Gender.Female, Specialties.NutritionCoaching, 1993),
+                NewTrainer("Bilal Ahmed", "bilal.ahmed@powerfitness.pk", "03001234501", Gender.Male, Specialties.Bodybuilding, 1994, "Gulberg III", "Lahore"),
+                NewTrainer("Ayesha Siddiqui", "ayesha.siddiqui@powerfitness.pk", "03001234502", Gender.Female, Specialties.WeightLoss, 1991, "Clifton Block 5", "Karachi"),
+                NewTrainer("Hamza Sheikh", "hamza.sheikh@powerfitness.pk", "03001234503", Gender.Male, Specialties.CrossFit, 1989, "F-7 Markaz", "Islamabad"),
+                NewTrainer("Sana Malik", "sana.malik@powerfitness.pk", "03001234504", Gender.Female, Specialties.NutritionCoaching, 1993, "Bahria Town", "Rawalpindi"),
             };
             _dbContext.Trainers.AddRange(trainers);
 
             var members = new List<Member> {
-                NewMember("Youssef Amin", "youssef.amin@example.com", "01112345601", Gender.Male, 1997, 178, 82, BloodType.OPositive),
-                NewMember("Mariam Saad", "mariam.saad@example.com", "01112345602", Gender.Female, 1999, 165, 58, BloodType.APositive),
-                NewMember("Hana Youssef", "hana.youssef@example.com", "01112345603", Gender.Female, 1996, 170, 63, BloodType.BPositive),
-                NewMember("Tarek Mostafa", "tarek.mostafa@example.com", "01112345604", Gender.Male, 1992, 183, 91, BloodType.ABPositive),
-                NewMember("Laila Ibrahim", "laila.ibrahim@example.com", "01112345605", Gender.Female, 2000, 162, 55, BloodType.ONegative),
-                NewMember("Ahmed Zaki", "ahmed.zaki@example.com", "01112345606", Gender.Male, 1988, 175, 88, BloodType.ANegative),
+                NewMember("Ali Raza", "ali.raza@example.com", "03211234601", Gender.Male, 1997, 178, 82, BloodType.OPositive, "DHA Phase 5", "Lahore"),
+                NewMember("Fatima Khan", "fatima.khan@example.com", "03211234602", Gender.Female, 1999, 165, 58, BloodType.APositive, "Gulshan-e-Iqbal", "Karachi"),
+                NewMember("Zainab Iqbal", "zainab.iqbal@example.com", "03211234603", Gender.Female, 1996, 170, 63, BloodType.BPositive, "G-11 Markaz", "Islamabad"),
+                NewMember("Usman Tariq", "usman.tariq@example.com", "03211234604", Gender.Male, 1992, 183, 91, BloodType.ABPositive, "Model Town", "Lahore"),
+                NewMember("Hina Yousaf", "hina.yousaf@example.com", "03211234605", Gender.Female, 2000, 162, 55, BloodType.ONegative, "Saddar", "Rawalpindi"),
+                NewMember("Ahmed Nawaz", "ahmed.nawaz@example.com", "03211234606", Gender.Male, 1988, 175, 88, BloodType.ANegative, "North Nazimabad", "Karachi"),
             };
             _dbContext.Members.AddRange(members);
             await _dbContext.SaveChangesAsync();
@@ -165,26 +204,65 @@ namespace Presistence.Data {
                 }
             }
             await _dbContext.SaveChangesAsync();
+
+            await SeedDemoLoginsAsync(members[0], trainers[0]);
         }
 
-        private static Trainer NewTrainer(string name, string email, string phone, Gender gender, Specialties specialty, int birthYear) => new() {
+        /// <summary>
+        /// Gives One Demo Member And One Demo Trainer A Login, So A Fresh Clone Can Be Signed Into
+        /// As Each Role Rather Than Only As The Administrator. Development Sample Data Only —
+        /// It Rides Along With <c>Seed:SeedDemoData</c>.
+        /// </summary>
+        private async Task SeedDemoLoginsAsync(Member member, Trainer trainer) {
+            var password = _seedOptions.DemoPassword;
+            if (string.IsNullOrWhiteSpace(password)) return;
+
+            await CreateLoginAsync(member.Email, member.Name, AppRoles.Member, password, memberId: member.Id);
+            await CreateLoginAsync(trainer.Email, trainer.Name, AppRoles.Trainer, password, trainerId: trainer.Id);
+        }
+
+        private async Task CreateLoginAsync(string email, string fullName, string role, string password,
+                                            int? memberId = null, int? trainerId = null) {
+            if (await _userManager.FindByEmailAsync(email) is not null) return;
+
+            var user = new AppUser {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                FullName = fullName,
+                MemberId = memberId,
+                TrainerId = trainerId
+            };
+
+            var result = await _userManager.CreateAsync(user, password);
+            if (result.Succeeded) {
+                await _userManager.AddToRoleAsync(user, role);
+                _logger.LogInformation("Seeded the demo {Role} login {Email}.", role, email);
+            }
+            else {
+                _logger.LogError("Seeding the demo {Role} login failed: {Errors}",
+                    role, string.Join("; ", result.Errors.Select(E => E.Description)));
+            }
+        }
+
+        private static Trainer NewTrainer(string name, string email, string phone, Gender gender, Specialties specialty, int birthYear, string street, string city) => new() {
             Name = name,
             Email = email,
             Phone = phone,
             Gender = gender,
             Specialties = specialty,
             DateOfBirth = new DateOnly(birthYear, 5, 12),
-            Address = new Address { BuildingNumber = 14, Street = "El Nasr", City = "Cairo" },
+            Address = new Address { BuildingNumber = 14, Street = street, City = city },
             CreatedAt = DateOnly.FromDateTime(DateTime.Now.AddMonths(-8))
         };
 
-        private static Member NewMember(string name, string email, string phone, Gender gender, int birthYear, decimal height, decimal weight, BloodType bloodType) => new() {
+        private static Member NewMember(string name, string email, string phone, Gender gender, int birthYear, decimal height, decimal weight, BloodType bloodType, string street, string city) => new() {
             Name = name,
             Email = email,
             Phone = phone,
             Gender = gender,
             DateOfBirth = new DateOnly(birthYear, 3, 21),
-            Address = new Address { BuildingNumber = 7, Street = "Gameat El Dowal", City = "Giza" },
+            Address = new Address { BuildingNumber = 7, Street = street, City = city },
             CreatedAt = DateOnly.FromDateTime(DateTime.Now.AddMonths(-3)),
             HealthRecord = new HealthRecord { Height = height, Weight = weight, BloodType = bloodType }
         };

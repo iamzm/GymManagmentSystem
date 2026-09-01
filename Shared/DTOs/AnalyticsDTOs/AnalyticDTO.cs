@@ -14,6 +14,9 @@
 
         // Subscriptions
         public int ActiveMemberships { get; set; }
+
+        /// <summary>Sold And Dated To Begin Later — Upgrades And Downgrades Waiting Their Turn.</summary>
+        public int ScheduledMemberships { get; set; }
         public int ExpiredMemberships { get; set; }
         public int ExpiringSoon { get; set; }
         public int ActivePlans { get; set; }

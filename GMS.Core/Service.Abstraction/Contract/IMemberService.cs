@@ -17,5 +17,11 @@ namespace Services.Abstraction.Contract {
         Task<IEnumerable<BookingDTO>> GetMemberBookings(int memberId);
         /// <summary>The Stored Photo File Name, So A Replaced Photo Can Be Deleted From Disk.</summary>
         Task<string?> GetMemberPhoto(int memberId);
+
+        /// <summary>
+        /// The Gym Record Belonging To A Login Account, Matched On Email. Returns Null When The
+        /// Person Has An Account But No Membership Record Yet.
+        /// </summary>
+        Task<int?> FindMemberIdByEmail(string email);
     }
 }

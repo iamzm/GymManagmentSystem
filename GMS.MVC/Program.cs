@@ -79,6 +79,9 @@ namespace GMS.MVC {
             // Allow DI To The Attachment Service (Profile Photo Uploads)
             builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
+            // Resolves The Signed-In Account To Its Gym Record, For The Member Self-Service Screens
+            builder.Services.AddScoped<IMemberContext, MemberContext>();
+
             // Add AutoMapper To Services
             builder.Services.AddAutoMapper(M => {
                 M.AddProfile(new MemberProfile());

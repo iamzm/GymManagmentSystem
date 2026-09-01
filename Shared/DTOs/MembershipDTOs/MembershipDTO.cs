@@ -11,8 +11,21 @@
         public DateOnly StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
-        public string Status => EndDate >= DateTime.Now ? "Active" : "Expired";
-        public bool IsActive => EndDate >= DateTime.Now;
+        /// <summary>Dated To Begin Later — The Member's Next Plan, Not Their Current One.</summary>
+        public bool IsScheduled => StartDate > DateOnly.FromDateTime(DateTime.Now);
+
+        /// <summary>Running Right Now: Started, And Not Yet Finished.</summary>
+        public bool IsActive => !IsScheduled && EndDate >= DateTime.Now;
+
+        public string Status => IsScheduled ? "Scheduled" : IsActive ? "Active" : "Expired";
+
+        /// <summary>Days Until A Scheduled Contract Takes Over.</summary>
+        public int DaysUntilStart {
+            get {
+                var days = StartDate.DayNumber - DateOnly.FromDateTime(DateTime.Now).DayNumber;
+                return days > 0 ? days : 0;
+            }
+        }
 
         public int DaysRemaining {
             get {
