@@ -77,7 +77,11 @@ namespace Presistence.Data {
                 return;
             }
 
-            if (await _userManager.FindByEmailAsync(email) is not null) return;
+            var existing = await _userManager.FindByEmailAsync(email);
+            if (existing is not null) {
+                await RecoverAdminAsync(existing, password);
+                return;
+            }
 
             var admin = new AppUser {
                 UserName = email,
@@ -95,6 +99,47 @@ namespace Presistence.Data {
                 _logger.LogError("Seeding the administrator account failed: {Errors}",
                     string.Join("; ", result.Errors.Select(E => E.Description)));
             }
+        }
+
+        /// <summary>
+        /// The Administrator Already Exists. Normally There Is Nothing To Do — But With
+        /// <c>Seed:ResetAdminPassword</c> On, Put The Configured Password Back, Clear Any Lockout
+        /// And Restore The Admin Role, So A Deployment Nobody Can Sign Into Is Recoverable Without
+        /// Hand-Editing The Database.
+        /// </summary>
+        private async Task RecoverAdminAsync(AppUser admin, string password) {
+            if (!_seedOptions.ResetAdminPassword) {
+                _logger.LogInformation(
+                    "Administrator {Email} already exists; leaving it untouched. If nobody can sign in, " +
+                    "set Seed:ResetAdminPassword=true once to reset it.", admin.Email);
+                return;
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(admin);
+            var reset = await _userManager.ResetPasswordAsync(admin, token, password);
+
+            if (!reset.Succeeded) {
+                _logger.LogError("Resetting the administrator password failed: {Errors}",
+                    string.Join("; ", reset.Errors.Select(E => E.Description)));
+                return;
+            }
+
+            // A Reset Is Useless While The Account Is Still Serving Out A Lockout, Because Identity
+            // Refuses A Locked-Out Sign-In Before It Ever Checks The Password.
+            await _userManager.SetLockoutEndDateAsync(admin, null);
+            await _userManager.ResetAccessFailedCountAsync(admin);
+
+            if (!await _userManager.IsInRoleAsync(admin, AppRoles.Admin))
+                await _userManager.AddToRoleAsync(admin, AppRoles.Admin);
+
+            if (!admin.IsActive) {
+                admin.IsActive = true;
+                await _userManager.UpdateAsync(admin);
+            }
+
+            _logger.LogWarning(
+                "Seed:ResetAdminPassword is on — the password for {Email} has been reset and any lockout " +
+                "cleared. Turn it off now, or it resets again on every restart.", admin.Email);
         }
         #endregion
 
@@ -233,7 +278,11 @@ namespace Presistence.Data {
 
         private async Task CreateLoginAsync(string email, string fullName, string role, string password,
                                             int? memberId = null, int? trainerId = null) {
-            if (await _userManager.FindByEmailAsync(email) is not null) return;
+            var existing = await _userManager.FindByEmailAsync(email);
+            if (existing is not null) {
+                await RecoverAdminAsync(existing, password);
+                return;
+            }
 
             var user = new AppUser {
                 UserName = email,

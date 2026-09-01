@@ -41,7 +41,21 @@ namespace GMS.MVC.Controllers {
                 user, loginViewModel.Password, loginViewModel.RememberMe, lockoutOnFailure: true);
 
             if (result.IsLockedOut) {
-                ModelState.AddModelError(string.Empty, "Too Many Failed Attempts. Please Try Again In A Few Minutes.");
+                // Identity Refuses A Locked-Out Sign-In Before It Ever Checks The Password, So The
+                // Right Password Fails Too. Saying How Long Is Left Stops That Looking Like A
+                // Wrong Password And Sending Someone Round The Same Loop.
+                var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
+                var minutesLeft = lockoutEnd is null
+                    ? 0
+                    : (int)Math.Ceiling((lockoutEnd.Value - DateTimeOffset.UtcNow).TotalMinutes);
+
+                ModelState.AddModelError(string.Empty, minutesLeft > 0
+                    ? $"This Account Is Locked After Too Many Failed Attempts. Try Again In {minutesLeft} Minute{(minutesLeft == 1 ? "" : "s")} — Even The Correct Password Will Be Refused Until Then."
+                    : "This Account Is Locked After Too Many Failed Attempts. Please Try Again Shortly.");
+
+                _logger.LogWarning("Sign-in refused for {Email}: account locked for another {Minutes} minute(s).",
+                    user.Email, minutesLeft);
+
                 return View(loginViewModel);
             }
 

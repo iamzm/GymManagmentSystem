@@ -95,6 +95,24 @@ Built on **ASP.NET Core Identity** with cookie authentication and a **fallback a
 - Login failures give one message for both an unknown email and a wrong password, so the form can't be used to discover registered addresses. Accounts lock for 10 minutes after 5 failed attempts.
 - Return URLs are validated with `Url.IsLocalUrl`, so `?returnUrl=` can't be turned into an open redirect.
 
+### Locked out of a deployment?
+
+Two things to know before assuming the password is wrong:
+
+- **The lockout refuses the correct password too.** Identity checks the lockout *before* it checks the password, so after 5 failed attempts every sign-in fails for 10 minutes regardless. The login page now says how many minutes are left, so this is visible rather than looking like another wrong password.
+- **`appsettings.Development.json` is not loaded outside Development.** Deploying with `ASPNETCORE_ENVIRONMENT=Production` and no `Seed__AdminPassword` means `Seed:AdminPassword` is blank, so **no administrator is seeded at all** — the app logs a warning saying exactly that on startup.
+
+Which of the two you are hitting is easy to tell apart from the message: *"Incorrect Email Or Password"* means the account does not exist or the password is wrong; *"This Account Is Locked…"* means the account **does** exist and you are inside the lockout window.
+
+To reset the password and clear the lockout, restart once with:
+
+```bash
+export Seed__ResetAdminPassword=true
+export Seed__AdminPassword='<a strong password>'
+# start the app, watch for "Seed:ResetAdminPassword is on — the password ... has been reset"
+# then unset both and restart again
+```
+
 **Bootstrap admin.** On first run the initializer seeds an administrator from configuration. The password is deliberately **blank in `appsettings.json`** — supply it per environment:
 
 ```bash
@@ -235,6 +253,7 @@ The `Seed` configuration section controls startup seeding:
 |---|---|
 | `Seed:AdminEmail` | Email for the bootstrap administrator. |
 | `Seed:AdminPassword` | Its password. **Blank in `appsettings.json` on purpose** — supply per environment. |
+| `Seed:ResetAdminPassword` | **Off by default.** Set to `true` with `Seed:AdminPassword` filled in to reset the existing administrator's password *and clear any lockout* on the next start, then set it back to `false`. The recovery hatch for a deployment nobody can sign into. |
 | `Seed:AdminFullName` | Display name for that account. |
 | `Seed:SeedDemoData` | When `true` (Development default), seeds sample trainers, members, memberships, sessions and bookings on an empty database, so a fresh clone shows a populated dashboard instead of six zeroes. |
 | `Seed:DemoPassword` | Password for the demo member and trainer logins created alongside the sample records, so every role can be signed into. Blank means no demo logins. |

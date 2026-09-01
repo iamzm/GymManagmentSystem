@@ -19,6 +19,14 @@
         public bool ResetDemoData { get; set; }
 
         /// <summary>
+        /// Recovery Hatch, Off By Default. When On, Startup Resets The Administrator's Password To
+        /// <see cref="AdminPassword"/>, Clears Any Lockout, And Makes Sure The Account Still Holds
+        /// The Admin Role. For The Case Where A Deployment Exists But Nobody Can Sign Into It.
+        /// Turn It Off Again Straight After, Or Every Restart Resets The Password.
+        /// </summary>
+        public bool ResetAdminPassword { get; set; }
+
+        /// <summary>
         /// Password For The Demo Member And Trainer Logins Created Alongside The Sample Records,
         /// So Each Role Can Actually Be Signed Into. Blank Means No Demo Logins Are Created.
         /// </summary>
