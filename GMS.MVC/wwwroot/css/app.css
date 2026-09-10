@@ -31,6 +31,8 @@
     --accent-400: #bef264;
     --accent-100: #ecfccb;
     --accent-ink: #1a2e05;
+    /* Volt is the hardest hue to read: --accent-600 on --accent-100 measures 2.84:1. */
+    --accent-on-soft: #3f6212;
 
     /* Neutrals — slate with a faint violet cast, so greys sit beside the brand
        instead of fighting it. */
@@ -46,14 +48,23 @@
     --white: #ffffff;
 
     /* Status */
+    /* Each status hue carries two values, because one cannot do both jobs. The -600 is the
+       graphic colour: meter fills, solid button backgrounds, accent bars, borders. The -ink is
+       the same hue darkened until it is readable as *text*, whether on the -100 soft surface or
+       on a plain card. Using -600 for text is what put 116 nodes under 4.5:1 — #059669 on
+       #d6f5e8 measures 3.24:1. This mirrors the --brand-600 / --brand-ink split above. */
     --ok-600: #059669;
     --ok-100: #d6f5e8;
+    --ok-ink: #065f46;
     --warn-600: #b45309;
     --warn-100: #fdf0d9;
+    --warn-ink: #92400e;
     --danger-600: #dc2626;
     --danger-100: #fdeaea;
+    --danger-ink: #b42318;
     --info-600: #0284c7;
     --info-100: #e0f2fe;
+    --info-ink: #0369a1;
 
     /* Surfaces */
     --surface: var(--white);
@@ -71,7 +82,9 @@
     /* Text */
     --text: var(--ink-900);
     --text-muted: var(--ink-500);
-    --text-subtle: var(--ink-400);
+    /* Deliberately not --ink-400: that value is fine as a graphic accent but measures 3.2:1
+       as text on white, and this token is only ever used for text. */
+    --text-subtle: #6b6382;
     --text-invert: var(--white);
 
     /* Shape */
@@ -119,7 +132,7 @@
 
     --text: #f3f0fb;
     --text-muted: #a99fc4;
-    --text-subtle: #82789e;
+    --text-subtle: #9990b2;
 
     --ink-50: #1a1429;
     --ink-100: #221a35;
@@ -132,11 +145,18 @@
 
     --accent-100: #23330a;
     --accent-600: #bef264;
+    --accent-on-soft: #bef264;
 
+    /* On dark the ink direction reverses: the readable text value is a light tint of the hue,
+       not a dark one. The -600 graphic values stay put so solid buttons keep their colour. */
     --ok-100: #06301f;
+    --ok-ink: #34d399;
     --warn-100: #3a2408;
+    --warn-ink: #fbbf24;
     --danger-100: #3d1414;
+    --danger-ink: #f87171;
     --info-100: #08283c;
+    --info-ink: #38bdf8;
 
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, .45);
     --shadow-sm: 0 2px 10px rgba(0, 0, 0, .4);
@@ -394,7 +414,7 @@ a:hover { color: var(--brand-500); }
 .btn-app--soft { --btn-bg: var(--brand-50); --btn-fg: var(--brand-on-soft); --btn-bd: transparent; }
 .btn-app--soft:hover { --btn-bg: var(--brand-100); --btn-fg: var(--brand-on-soft); }
 
-.btn-app--danger { --btn-bg: transparent; --btn-fg: var(--danger-600); --btn-bd: var(--danger-600); }
+.btn-app--danger { --btn-bg: transparent; --btn-fg: var(--danger-ink); --btn-bd: var(--danger-ink); }
 .btn-app--danger:hover { --btn-bg: var(--danger-600); --btn-fg: #fff; }
 
 .btn-app--danger-solid { --btn-bg: var(--danger-600); --btn-fg: #fff; --btn-bd: var(--danger-600); }
@@ -481,11 +501,11 @@ a:hover { color: var(--brand-500); }
 .stat-tile__meta { font-size: 12px; color: var(--text-subtle); margin-top: 8px; display: flex; align-items: center; gap: 5px; }
 
 .tile--brand { --tile-accent: var(--brand-ink); --tile-soft: var(--brand-50); }
-.tile--ok { --tile-accent: var(--ok-600); --tile-soft: var(--ok-100); }
-.tile--warn { --tile-accent: var(--warn-600); --tile-soft: var(--warn-100); }
-.tile--danger { --tile-accent: var(--danger-600); --tile-soft: var(--danger-100); }
-.tile--info { --tile-accent: var(--info-600); --tile-soft: var(--info-100); }
-.tile--accent { --tile-accent: var(--accent-600); --tile-soft: var(--accent-100); }
+.tile--ok { --tile-accent: var(--ok-ink); --tile-soft: var(--ok-100); }
+.tile--warn { --tile-accent: var(--warn-ink); --tile-soft: var(--warn-100); }
+.tile--danger { --tile-accent: var(--danger-ink); --tile-soft: var(--danger-100); }
+.tile--info { --tile-accent: var(--info-ink); --tile-soft: var(--info-100); }
+.tile--accent { --tile-accent: var(--accent-on-soft); --tile-soft: var(--accent-100); }
 
 /* --- 8. Badges & pills --------------------------------------------------- */
 .pill {
@@ -503,13 +523,13 @@ a:hover { color: var(--brand-500); }
 .pill i { font-size: 11px; }
 /* Long labels (a trainer specialty) need to wrap rather than run out of their card. */
 .pill--multiline { white-space: normal; text-align: left; line-height: 1.4; }
-.pill--ok { background: var(--ok-100); color: var(--ok-600); }
-.pill--warn { background: var(--warn-100); color: var(--warn-600); }
-.pill--danger { background: var(--danger-100); color: var(--danger-600); }
-.pill--info { background: var(--info-100); color: var(--info-600); }
+.pill--ok { background: var(--ok-100); color: var(--ok-ink); }
+.pill--warn { background: var(--warn-100); color: var(--warn-ink); }
+.pill--danger { background: var(--danger-100); color: var(--danger-ink); }
+.pill--info { background: var(--info-100); color: var(--info-ink); }
 .pill--brand { background: var(--brand-50); color: var(--brand-on-soft); }
 .pill--muted { background: var(--ink-100); color: var(--text-muted); }
-.pill--accent { background: var(--accent-100); color: var(--accent-600); }
+.pill--accent { background: var(--accent-100); color: var(--accent-on-soft); }
 .pill--outline { background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted); }
 
 /* --- 9. Avatars ---------------------------------------------------------- */
@@ -622,7 +642,7 @@ a:hover { color: var(--brand-500); }
     margin-bottom: 6px;
 }
 
-.form-app .req { color: var(--danger-600); }
+.form-app .req { color: var(--danger-ink); }
 
 .form-app .form-control,
 .form-app .form-select,
@@ -646,7 +666,7 @@ a:hover { color: var(--brand-500); }
 .form-app textarea.form-control { min-height: 96px; resize: vertical; }
 .form-app .form-control[readonly] { background: var(--surface-sunken); color: var(--text-muted); }
 .form-app .field-hint { font-size: 12.5px; color: var(--text-subtle); margin-top: 5px; }
-.form-app .text-danger, .field-error { font-size: 12.5px; color: var(--danger-600); display: block; margin-top: 5px; }
+.form-app .text-danger, .field-error { font-size: 12.5px; color: var(--danger-ink); display: block; margin-top: 5px; }
 .form-app .input-validation-error { border-color: var(--danger-600); }
 
 .form-section { margin-bottom: 26px; }
@@ -706,9 +726,9 @@ a:hover { color: var(--brand-500); }
 .toast-app i.toast-app__icon { color: var(--toast-accent); font-size: 18px; margin-top: 1px; }
 .toast-app__body { flex: 1; font-size: 14px; color: var(--text); }
 .toast-app__close { background: none; border: 0; color: var(--text-subtle); font-size: 15px; cursor: pointer; padding: 0 2px; }
-.toast-app--ok { --toast-accent: var(--ok-600); }
-.toast-app--danger { --toast-accent: var(--danger-600); }
-.toast-app--info { --toast-accent: var(--info-600); }
+.toast-app--ok { --toast-accent: var(--ok-ink); }
+.toast-app--danger { --toast-accent: var(--danger-ink); }
+.toast-app--info { --toast-accent: var(--info-ink); }
 
 @keyframes toast-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to { opacity: 0; transform: translateX(24px); } }
@@ -723,9 +743,9 @@ a:hover { color: var(--brand-500); }
     border: 1px solid transparent;
 }
 
-.alert-app--danger { background: var(--danger-100); color: var(--danger-600); border-color: rgba(217, 45, 32, .2); }
-.alert-app--warn { background: var(--warn-100); color: var(--warn-600); border-color: rgba(199, 119, 0, .2); }
-.alert-app--info { background: var(--info-100); color: var(--info-600); border-color: rgba(11, 118, 196, .2); }
+.alert-app--danger { background: var(--danger-100); color: var(--danger-ink); border-color: rgba(217, 45, 32, .2); }
+.alert-app--warn { background: var(--warn-100); color: var(--warn-ink); border-color: rgba(199, 119, 0, .2); }
+.alert-app--info { background: var(--info-100); color: var(--info-ink); border-color: rgba(11, 118, 196, .2); }
 .alert-app ul { margin: 0; padding-left: 18px; }
 
 /* --- 14. Empty state ----------------------------------------------------- */
@@ -941,7 +961,7 @@ a:hover { color: var(--brand-500); }
 }
 
 .dropdown-item:hover, .dropdown-item:focus { background: var(--brand-50); color: var(--brand-on-soft); }
-.dropdown-item.text-danger:hover { background: var(--danger-100); color: var(--danger-600); }
+.dropdown-item.text-danger:hover { background: var(--danger-100); color: var(--danger-ink); }
 .dropdown-item i { font-size: 15px; width: 17px; }
 .dropdown-divider { border-color: var(--border); margin: 5px 2px; }
 
