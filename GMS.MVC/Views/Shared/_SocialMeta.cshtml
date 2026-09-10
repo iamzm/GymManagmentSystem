@@ -1,0 +1,43 @@
+@*
+    Search and link-preview metadata, shared by the public and signed-in layouts.
+
+    Sharing a link to the site produced a blank card everywhere before this: there
+    was no description, no title beyond the tab text, and no image. The absolute
+    URLs are built from the current request, so they come out right behind the
+    reverse proxy too — the same reason the app calls UseForwardedHeaders.
+*@
+@{
+    var title = ViewData["Title"] as string;
+    // The landing page shares as the brand itself; every inner page is prefixed by
+    // where you are, which is what a shared link to it should say.
+    var isLanding = string.IsNullOrWhiteSpace(title) || title is "Power Fitness" or "Home";
+    var socialTitle = isLanding ? "Power Fitness — Gym Management" : $"{title} · Power Fitness";
+
+    var description = ViewData["Description"] as string
+        ?? "Manage memberships, class schedules, trainers and bookings for your gym in one place. Members book classes and change plans themselves.";
+
+    var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var canonical = $"{origin}{Context.Request.Path}";
+    var cover = $"{origin}{Url.Content("~/images/og-cover.jpg")}";
+}
+<meta name="description" content="@description" />
+<link rel="canonical" href="@canonical" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Power Fitness" />
+<meta property="og:title" content="@socialTitle" />
+<meta property="og:description" content="@description" />
+<meta property="og:url" content="@canonical" />
+<meta property="og:image" content="@cover" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Power Fitness — memberships, classes and trainers in one place" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="@socialTitle" />
+<meta name="twitter:description" content="@description" />
+<meta name="twitter:image" content="@cover" />
+
+@* Tints the browser chrome on mobile to match the shell, in each theme. *@
+<meta name="theme-color" content="#f4f1fb" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#120e1f" media="(prefers-color-scheme: dark)" />

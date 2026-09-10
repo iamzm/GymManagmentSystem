@@ -68,6 +68,8 @@
         initConfirmForms();
         initDateTimeDefaults();
         initCharts();
+        initTables();
+        initPendingForms();
     });
 
     /* --- Photo upload preview --------------------------------------------- */
@@ -165,6 +167,201 @@
             });
 
             host.innerHTML = html + '</div>';
+        });
+    }
+    /* --- Tables ----------------------------------------------------------
+       Sorting, paging and the mobile card layout are all done here rather than
+       in each view, so a table gets them by being a .table-app and nothing has
+       to be repeated across the ten list screens. Nothing here talks to the
+       server: sorting and paging act on the rows already rendered. */
+
+    var PAGE_SIZE = 12;
+
+    // The text a cell should sort by is not always all of its text. An identity cell
+    // leads with an avatar whose initials are derived from the name, and sorting on
+    // those puts "Bilal Ahmed" (BA) ahead of "Ben Zhang" (BZ). Prefer the name node
+    // when there is one, and otherwise drop anything purely decorative. Computed
+    // once per cell rather than on every comparison.
+    function sortText(cell) {
+        if (cell.getAttribute('data-sort-text') !== null) return cell.getAttribute('data-sort-text');
+
+        var primary = cell.querySelector('.identity__name');
+        var text;
+        if (primary) {
+            text = primary.textContent || '';
+        } else {
+            var clone = cell.cloneNode(true);
+            clone.querySelectorAll('.avatar-app, [aria-hidden="true"]').forEach(function (node) {
+                node.parentNode.removeChild(node);
+            });
+            text = clone.textContent || '';
+        }
+        text = text.replace(/\s+/g, ' ').trim();
+        cell.setAttribute('data-sort-text', text);
+        return text;
+    }
+
+    // "1,250 PKR" and "Sep 28, 2026" have to sort as a number and a date, not as
+    // text. Anything we cannot read confidently falls back to a string compare.
+    function sortValue(cell) {
+        var text = sortText(cell);
+        if (!text) return { type: 'empty', value: '' };
+
+        var numeric = text.replace(/[^0-9.\-]/g, '');
+        if (numeric && /[0-9]/.test(numeric) && /^[^A-Za-z]*$/.test(text.replace(/[A-Za-z]{2,}/g, ''))) {
+            var asNumber = parseFloat(numeric);
+            if (!isNaN(asNumber) && /^[\s\S]{0,40}$/.test(text)) {
+                var asDate = Date.parse(text);
+                if (!isNaN(asDate) && /[A-Za-z]/.test(text)) return { type: 'number', value: asDate };
+                return { type: 'number', value: asNumber };
+            }
+        }
+        var parsed = Date.parse(text);
+        if (!isNaN(parsed) && /\d/.test(text) && /[A-Za-z]{3}/.test(text)) return { type: 'number', value: parsed };
+        return { type: 'text', value: text.toLowerCase() };
+    }
+
+    function compareRows(a, b, index) {
+        var av = sortValue(a.cells[index]);
+        var bv = sortValue(b.cells[index]);
+        // Blanks sort last in both directions, so an empty cell never looks like a zero.
+        if (av.type === 'empty' && bv.type === 'empty') return 0;
+        if (av.type === 'empty') return 1;
+        if (bv.type === 'empty') return -1;
+        if (av.type === 'number' && bv.type === 'number') return av.value - bv.value;
+        return String(av.value).localeCompare(String(bv.value), undefined, { numeric: true });
+    }
+
+    function initTables() {
+        document.querySelectorAll('.table-app').forEach(function (table) {
+            var head = table.tHead;
+            var body = table.tBodies[0];
+            if (!head || !body || !head.rows.length) return;
+
+            var headers = Array.prototype.slice.call(head.rows[0].cells);
+            var rows = Array.prototype.slice.call(body.rows);
+            if (!rows.length) return;
+
+            // Stack each row into a labelled card under 768px. The label comes from
+            // the header, so the view markup does not carry a duplicate of it.
+            headers.forEach(function (th, index) {
+                var label = (th.textContent || '').trim();
+                if (!label) return;
+                rows.forEach(function (row) {
+                    var cell = row.cells[index];
+                    if (cell && !cell.hasAttribute('data-label')) cell.setAttribute('data-label', label);
+                });
+            });
+
+            var state = { index: -1, dir: 1, page: 0 };
+            var pager = rows.length > PAGE_SIZE ? buildPager(table, body, rows, state) : null;
+
+            headers.forEach(function (th, index) {
+                // The actions column holds buttons, not data, so it is not sortable.
+                if (th.classList.contains('col-actions')) return;
+                var label = (th.textContent || '').trim();
+                if (!label) return;
+
+                th.classList.add('is-sortable');
+                th.setAttribute('aria-sort', 'none');
+                // A real button, so the column is reachable and operable by keyboard
+                // and announced as a control rather than as plain header text.
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'table-sort';
+                button.innerHTML = '<span>' + label + '</span><i class="bi bi-arrow-down-up" aria-hidden="true"></i>';
+                th.textContent = '';
+                th.appendChild(button);
+
+                button.addEventListener('click', function () {
+                    state.dir = state.index === index ? -state.dir : 1;
+                    state.index = index;
+
+                    headers.forEach(function (other) {
+                        if (other === th) return;
+                        if (other.getAttribute('aria-sort')) other.setAttribute('aria-sort', 'none');
+                        var icon = other.querySelector('.table-sort i');
+                        if (icon) icon.className = 'bi bi-arrow-down-up';
+                    });
+                    th.setAttribute('aria-sort', state.dir === 1 ? 'ascending' : 'descending');
+                    button.querySelector('i').className = state.dir === 1 ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+
+                    rows.sort(function (a, b) { return compareRows(a, b, index) * state.dir; });
+                    rows.forEach(function (row) { body.appendChild(row); });
+                    state.page = 0;
+                    if (pager) pager.render();
+                });
+            });
+        });
+    }
+
+    function buildPager(table, body, rows, state) {
+        var wrap = table.closest('.table-app-wrap') || table.parentNode;
+        var bar = document.createElement('div');
+        bar.className = 'table-pager';
+        var status = document.createElement('p');
+        status.className = 'table-pager__status';
+        // Page changes move no focus, so the count is announced instead.
+        status.setAttribute('aria-live', 'polite');
+        var nav = document.createElement('div');
+        nav.className = 'table-pager__nav';
+        var prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'btn-app btn-app--ghost btn-app--sm';
+        prev.innerHTML = '<i class="bi bi-chevron-left" aria-hidden="true"></i> Previous';
+        var next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'btn-app btn-app--ghost btn-app--sm';
+        next.innerHTML = 'Next <i class="bi bi-chevron-right" aria-hidden="true"></i>';
+        nav.appendChild(prev);
+        nav.appendChild(next);
+        bar.appendChild(status);
+        bar.appendChild(nav);
+        wrap.appendChild(bar);
+
+        var pages = Math.ceil(rows.length / PAGE_SIZE);
+
+        function render() {
+            if (state.page > pages - 1) state.page = pages - 1;
+            if (state.page < 0) state.page = 0;
+            var from = state.page * PAGE_SIZE;
+            var to = Math.min(from + PAGE_SIZE, rows.length);
+            rows.forEach(function (row, i) { row.hidden = i < from || i >= to; });
+            status.textContent = 'Showing ' + (from + 1) + '–' + to + ' of ' + rows.length;
+            prev.disabled = state.page === 0;
+            next.disabled = state.page >= pages - 1;
+        }
+
+        prev.addEventListener('click', function () { state.page -= 1; render(); });
+        next.addEventListener('click', function () { state.page += 1; render(); });
+        render();
+        return { render: render };
+    }
+
+    /* --- Form submit state -----------------------------------------------
+       Every form could be submitted twice by double-clicking, which on a create
+       screen means two records. The button is disabled on the first submit and
+       says so, which also covers the gap on a slow connection where nothing
+       otherwise indicates the click registered. */
+    function initPendingForms() {
+        document.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                // A form that failed client-side validation has not really submitted.
+                if (form.getAttribute('novalidate') === null && !form.checkValidity()) return;
+                if (window.jQuery && jQuery(form).data('validator') && !jQuery(form).valid()) return;
+
+                var button = form.querySelector('button[type=submit], input[type=submit]');
+                if (!button || button.disabled) return;
+
+                window.setTimeout(function () {
+                    button.disabled = true;
+                    button.classList.add('is-pending');
+                    var label = button.getAttribute('data-pending-label');
+                    if (label && button.tagName === 'BUTTON') {
+                        button.innerHTML = '<i class="bi bi-arrow-repeat" aria-hidden="true"></i> ' + label;
+                    }
+                }, 0);
+            });
         });
     }
 })();

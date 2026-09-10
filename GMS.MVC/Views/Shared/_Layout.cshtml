@@ -29,6 +29,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@(ViewData["Title"] ?? "Dashboard") · Power Fitness</title>
     <link rel="icon" href="~/images/favicon.svg" type="image/svg+xml" />
+    <partial name="_SocialMeta" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -115,7 +116,7 @@
                         <span class="sidebar__user-role">@role</span>
                     </span>
                     <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
-                        <button type="submit" class="btn border-0 p-1 text-white-50" title="Sign out">
+                        <button type="submit" class="btn border-0 text-white-50 d-inline-flex align-items-center justify-content-center" style="min-width:32px;min-height:32px;padding:4px" title="Sign out">
                             <i class="bi bi-box-arrow-right fs-5"></i>
                         </button>
                     </form>

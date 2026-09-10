@@ -585,6 +585,109 @@ a:hover { color: var(--brand-500); }
 .table-app tbody tr:hover { background: var(--surface-sunken); }
 .table-app .col-actions { text-align: right; width: 1%; white-space: nowrap; }
 
+/* Sortable headers. The button fills the cell so the whole header is the target,
+   and it inherits the header's type styling rather than looking like a control
+   dropped into the row. */
+.table-app thead th.is-sortable { padding: 0; }
+
+.table-sort {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 13px 18px;
+    background: none;
+    border: 0;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.table-sort:hover { background: var(--ink-100); color: var(--text); }
+.table-sort:focus-visible { outline: 2px solid var(--brand-600); outline-offset: -2px; }
+.table-sort i { font-size: 11px; opacity: .5; }
+/* Once a column is sorted its arrow stays fully visible, so the active column
+   is identifiable without relying on the header's background alone. */
+.table-app thead th[aria-sort="ascending"] .table-sort i,
+.table-app thead th[aria-sort="descending"] .table-sort i { opacity: 1; color: var(--brand-ink); }
+
+.table-pager {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-sunken);
+}
+
+.table-pager__status { margin: 0; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.table-pager__nav { display: flex; gap: 8px; }
+.table-pager__nav .btn-app[disabled] { opacity: .45; pointer-events: none; }
+
+/* Below 768px a seven-column table cannot be read by scrolling sideways, so each
+   row becomes a card and every cell carries the header as its own label. The
+   labels come from JS rather than being duplicated into the markup of ten views. */
+@media (max-width: 767.98px) {
+    .table-app-wrap { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
+    .table-app-scroll { overflow-x: visible; }
+    .table-app thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    .table-app, .table-app tbody, .table-app tr, .table-app td { display: block; width: auto; }
+
+    .table-app tbody tr {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        box-shadow: var(--shadow-xs);
+        padding: 4px 2px;
+        margin-bottom: 12px;
+    }
+
+    .table-app tbody tr:hover { background: var(--surface); }
+    .table-app tbody tr[hidden] { display: none; }
+
+    .table-app tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: right;
+    }
+
+    .table-app tbody td:last-child { border-bottom: 0; }
+
+    .table-app tbody td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        font-size: 11.5px;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-align: left;
+    }
+
+    /* A cell with no label is a full-width row of its own — the identity cell at
+       the top of the card, and the actions row at the bottom. */
+    .table-app tbody td:not([data-label])::before { content: none; }
+    .table-app .col-actions { width: auto; justify-content: flex-end; }
+    .table-pager { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+}
+
+/* A submitted form's button stays put but stops accepting a second click. */
+.btn-app.is-pending { opacity: .72; cursor: progress; pointer-events: none; }
+.btn-app.is-pending i.bi-arrow-repeat { animation: pf-spin 900ms linear infinite; }
+
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+
 /* --- 11. Toolbar (search + filters) -------------------------------------- */
 .toolbar {
     display: flex;
@@ -725,7 +828,14 @@ a:hover { color: var(--brand-500); }
 .toast-app.is-leaving { animation: toast-out var(--base) var(--ease) forwards; }
 .toast-app i.toast-app__icon { color: var(--toast-accent); font-size: 18px; margin-top: 1px; }
 .toast-app__body { flex: 1; font-size: 14px; color: var(--text); }
-.toast-app__close { background: none; border: 0; color: var(--text-subtle); font-size: 15px; cursor: pointer; padding: 0 2px; }
+.toast-app__close {
+    background: none; border: 0; color: var(--text-subtle); font-size: 15px; cursor: pointer;
+    /* Measured at 19x24 before this, under the 24x24 minimum for a pointer target. */
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; flex: 0 0 auto; margin: -4px -4px -4px 0;
+    border-radius: var(--r-xs); padding: 0;
+}
+.toast-app__close:hover { background: var(--ink-100); color: var(--text); }
 .toast-app--ok { --toast-accent: var(--ok-ink); }
 .toast-app--danger { --toast-accent: var(--danger-ink); }
 .toast-app--info { --toast-accent: var(--info-ink); }
@@ -824,6 +934,36 @@ a:hover { color: var(--brand-500); }
 
 /* Long values (an email, an address) need more than one grid track to stay readable. */
 .detail-item--wide { grid-column: span 2; }
+
+/* --- Small-screen corrections ------------------------------------------
+   Both of these were found by walking every element at 320/375/390/414 and
+   comparing its right edge against the viewport, rather than by eye. */
+
+/* Bootstrap's .row pulls itself out by half its gutter and relies on the
+   container's padding to absorb it. With g-5 that pull is 24px a side while
+   .container pads only 12px. Above 768px the container is centred, so its auto
+   margins hide the difference; on a phone it is full-bleed and the row hangs
+   12px past the right edge, scrolling the whole page. Matching the gutter to
+   the padding below that breakpoint costs nothing visually at this size. */
+@media (max-width: 767.98px) {
+    .container > .row.g-5,
+    .container-fluid > .row.g-5 { --bs-gutter-x: 1.5rem; }
+}
+
+/* At 320px the marketing header's links and its call to action cannot sit on
+   one line beside the wordmark, and the row ran 59px past the edge. Letting the
+   bar wrap and centre keeps every link reachable instead of clipped. */
+@media (max-width: 400px) {
+    /* The contact email is a single unbreakable token, wider at 320px than the
+       half-width column holding it, which pushed the page 28px past the viewport.
+       Full-width columns plus a break opportunity inside the token fix it. */
+    .site-footer .col-6 { width: 100%; }
+    .site-footer li { overflow-wrap: anywhere; }
+
+    .public-nav__inner { flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .public-nav__links { margin-left: 0; flex-wrap: wrap; justify-content: center; }
+    .public-nav__link { padding: 8px 11px; font-size: 14px; }
+}
 
 @media (max-width: 640px) {
     .detail-item--wide { grid-column: span 1; }
@@ -936,6 +1076,9 @@ a:hover { color: var(--brand-500); }
 .site-footer { background: #1a0b33; color: #c2b3e4; padding: 52px 0 26px; margin-top: 64px; }
 .site-footer h5 { color: #fff; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 16px; }
 .site-footer a { color: #c2b3e4; }
+/* The footer links measured 18px tall. Making them inline-block with vertical
+   padding brings the tap area to 24px without changing how the list looks. */
+.site-footer li a { display: inline-block; padding: 3px 0; min-height: 24px; }
 .site-footer a:hover { color: #fff; }
 .site-footer__bottom { border-top: 1px solid rgba(255, 255, 255, .1); margin-top: 32px; padding-top: 20px; font-size: 13.5px; color: #9a8bbd; }
 
@@ -1004,6 +1147,7 @@ a:hover { color: var(--brand-500); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .btn-app.is-pending i.bi-arrow-repeat { animation: none; }
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 

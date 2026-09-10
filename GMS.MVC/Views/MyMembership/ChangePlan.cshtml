@@ -118,7 +118,7 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="PlanId" value="@Model.PlanId" />
             <a class="btn-app btn-app--ghost flex-fill" asp-action="Index">Cancel</a>
-            <button type="submit" class="btn-app btn-app--primary flex-fill">
+            <button type="submit" data-pending-label="Scheduling…" class="btn-app btn-app--primary flex-fill">
                 <i class="bi bi-check-lg"></i>
                 Confirm — start @Model.Name on @Model.EffectiveFrom.ToString("MMM dd")
             </button>
