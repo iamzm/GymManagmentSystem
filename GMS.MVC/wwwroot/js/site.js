@@ -249,7 +249,20 @@
                 if (!label) return;
                 rows.forEach(function (row) {
                     var cell = row.cells[index];
-                    if (cell && !cell.hasAttribute('data-label')) cell.setAttribute('data-label', label);
+                    if (!cell || cell.hasAttribute('data-label')) return;
+                    cell.setAttribute('data-label', label);
+
+                    // The card layout lays the label and the value out side by side. Without
+                    // a wrapper each of the cell's own children becomes a sibling of the
+                    // label instead, so an email and the phone under it end up on one line
+                    // and both get truncated. The wrapper is display:contents on desktop,
+                    // so it changes nothing there.
+                    if (cell.firstChild && !cell.querySelector(':scope > .cell-body')) {
+                        var body = document.createElement('div');
+                        body.className = 'cell-body';
+                        while (cell.firstChild) body.appendChild(cell.firstChild);
+                        cell.appendChild(body);
+                    }
                 });
             });
 

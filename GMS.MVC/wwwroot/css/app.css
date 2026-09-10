@@ -584,6 +584,8 @@ a:hover { color: var(--brand-500); }
 .table-app tbody tr { transition: background-color var(--fast) var(--ease); }
 .table-app tbody tr:hover { background: var(--surface-sunken); }
 .table-app .col-actions { text-align: right; width: 1%; white-space: nowrap; }
+/* Only the mobile card layout uses this wrapper; here it must not exist as a box. */
+.table-app tbody td > .cell-body { display: contents; }
 
 /* Sortable headers. The button fills the cell so the whole header is the target,
    and it inherits the header's type styling rather than looking like a control
@@ -663,6 +665,18 @@ a:hover { color: var(--brand-500); }
     }
 
     .table-app tbody td:last-child { border-bottom: 0; }
+
+    /* Stack the cell's own content under its label rather than beside it. */
+    .table-app tbody td > .cell-body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        min-width: 0;
+        text-align: right;
+    }
+
+    .table-app tbody td > .cell-body > * { max-width: 100%; }
 
     .table-app tbody td::before {
         content: attr(data-label);
@@ -953,6 +967,13 @@ a:hover { color: var(--brand-500); }
 /* At 320px the marketing header's links and its call to action cannot sit on
    one line beside the wordmark, and the row ran 59px past the edge. Letting the
    bar wrap and centre keeps every link reachable instead of clipped. */
+@media (max-width: 480px) {
+    /* The page subtitle wrapped onto three lines beside the topbar controls and
+       squeezed them; the page heading below repeats the same words anyway. */
+    .topbar__crumb { display: none; }
+    .topbar__title { font-size: 16px; }
+}
+
 @media (max-width: 400px) {
     /* The contact email is a single unbreakable token, wider at 320px than the
        half-width column holding it, which pushed the page 28px past the viewport.
