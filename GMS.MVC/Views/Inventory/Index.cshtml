@@ -1,0 +1,225 @@
+@model IEnumerable<InventoryItemDTO>
+@{
+    ViewData["Title"] = "Inventory";
+    ViewData["Crumb"] = "Equipment and stock the gym owns";
+    var search = ViewBag.Search as string;
+    var kind = ViewBag.Kind as int?;
+    var flag = ViewBag.Flag as string;
+    var summary = ViewBag.Summary as InventorySummaryDTO ?? new InventorySummaryDTO();
+    var items = Model?.ToList() ?? [];
+    var isAdmin = User.IsInRole(AppRoles.Admin);
+
+    string ChipClass(string? value) => flag == value || (string.IsNullOrEmpty(flag) && value is null)
+        ? "chip is-active" : "chip";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations</div>
+        <h1 class="page-head__title">Inventory</h1>
+        <p class="page-head__sub">@items.Count item@(items.Count == 1 ? "" : "s") shown · @Money.Format(summary.TotalValue) held</p>
+    </div>
+    @if (isAdmin) {
+        <div class="page-head__actions">
+            <a class="btn-app btn-app--primary" asp-action="Create"><i class="bi bi-plus-lg"></i> Add Item</a>
+        </div>
+    }
+</div>
+
+<div class="stat-grid mb-4">
+    <div class="stat-tile tile--brand">
+        <div class="stat-tile__icon"><i class="bi bi-bicycle"></i></div>
+        <div class="stat-tile__value">@summary.EquipmentCount</div>
+        <div class="stat-tile__label">Equipment</div>
+    </div>
+    <div class="stat-tile tile--info">
+        <div class="stat-tile__icon"><i class="bi bi-box-seam"></i></div>
+        <div class="stat-tile__value">@summary.ConsumableCount</div>
+        <div class="stat-tile__label">Stock lines</div>
+    </div>
+    <div class="stat-tile tile--accent">
+        <div class="stat-tile__icon"><i class="bi bi-wallet2"></i></div>
+        <div class="stat-tile__value">@Money.Amount(summary.TotalValue)</div>
+        <div class="stat-tile__label">Total value</div>
+        <div class="stat-tile__meta"><i class="bi bi-info-circle"></i> Quantity × unit cost</div>
+    </div>
+    <div class="stat-tile @(summary.LowStockCount > 0 ? "tile--danger" : "tile--ok")">
+        <div class="stat-tile__icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <div class="stat-tile__value">@(summary.LowStockCount + summary.ServiceDueCount)</div>
+        <div class="stat-tile__label">Need attention</div>
+        <div class="stat-tile__meta">
+            <i class="bi bi-dot"></i> @summary.LowStockCount low stock · @summary.ServiceDueCount service due
+        </div>
+    </div>
+</div>
+
+<form class="toolbar" method="get" asp-action="Index" data-search-form>
+    <div class="search-field">
+        <i class="bi bi-search"></i>
+        <input type="search" name="search" value="@search" placeholder="Search by name, supplier or location…" aria-label="Search inventory" />
+    </div>
+
+    <input type="hidden" name="flag" value="@flag" />
+
+    <select name="kind" class="input-app" style="max-width:220px" onchange="this.form.submit()" aria-label="Filter by item kind">
+        <option value="">All kinds</option>
+        @foreach (var item in Html.GetEnumSelectList<ItemKind>()) {
+            <option value="@item.Value" selected="@(kind?.ToString() == item.Value)">@item.Text</option>
+        }
+    </select>
+
+    <div class="filter-chips">
+        <a class="@ChipClass(null)" asp-action="Index" asp-route-search="@search" asp-route-kind="@kind">All</a>
+        <a class="@ChipClass("low")" asp-action="Index" asp-route-search="@search" asp-route-kind="@kind" asp-route-flag="low">Low stock</a>
+        <a class="@ChipClass("service")" asp-action="Index" asp-route-search="@search" asp-route-kind="@kind" asp-route-flag="service">Service due</a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(search) || kind is not null || !string.IsNullOrWhiteSpace(flag)) {
+        <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-action="Index"><i class="bi bi-x-lg"></i> Clear</a>
+    }
+</form>
+
+@if (items.Count > 0) {
+    <div class="table-app-wrap">
+        <div class="table-app-scroll">
+            <table class="table-app">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Kind</th>
+                        <th>Quantity</th>
+                        <th>Unit Cost</th>
+                        <th>Value</th>
+                        <th>Status</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in items) {
+                        <tr>
+                            <td>
+                                <div class="min-width-0">
+                                    <div class="identity__name">@item.Name</div>
+                                    <div class="identity__meta">
+                                        @if (item.IsEquipment && !string.IsNullOrWhiteSpace(item.Location)) {
+                                            <i class="bi bi-geo-alt"></i> @item.Location
+                                        }
+                                        else if (!string.IsNullOrWhiteSpace(item.Supplier)) {
+                                            <i class="bi bi-truck"></i> @item.Supplier
+                                        }
+                                        else {
+                                            <text>#@item.Id</text>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (item.IsEquipment) {
+                                    <span class="pill pill--brand"><i class="bi bi-bicycle"></i>Equipment</span>
+                                }
+                                else {
+                                    <span class="pill pill--info"><i class="bi bi-box-seam"></i>Stock</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="stock-cell">
+                                    <span class="mono-num fw-600">@item.Quantity</span>
+                                    @if (item.ReorderLevel.HasValue) {
+                                        <span class="text-subtle fs-13">/ @item.ReorderLevel min</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="mono-num text-muted-2">@Money.Amount(item.UnitCost)</td>
+                            <td class="mono-num fw-600">@Money.Format(item.TotalValue)</td>
+                            <td>
+                                @if (item.IsLowStock) {
+                                    <span class="pill pill--danger"><i class="bi bi-exclamation-triangle-fill"></i>Low stock</span>
+                                }
+                                else if (item.IsServiceOverdue) {
+                                    <span class="pill pill--danger"><i class="bi bi-tools"></i>Service overdue</span>
+                                }
+                                else if (item.IsServiceDueSoon) {
+                                    <span class="pill pill--warn"><i class="bi bi-tools"></i>Service soon</span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.Condition)) {
+                                    <span class="pill pill--ok"><i class="bi bi-check-circle-fill"></i>@item.Condition</span>
+                                }
+                                else {
+                                    <span class="pill pill--ok"><i class="bi bi-check-circle-fill"></i>In stock</span>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                <div class="d-inline-flex align-items-center gap-1">
+                                    @* Staff can log stock moving in and out without being able to change its cost. *@
+                                    <form asp-action="Adjust" asp-route-id="@item.Id" method="post" class="d-inline m-0">
+                                        <input type="hidden" name="delta" value="-1" />
+                                        <input type="hidden" name="returnFlag" value="@flag" />
+                                        <button type="submit" class="icon-btn" aria-label="Decrease @item.Name by one"
+                                                title="Decrease by one" @(item.Quantity == 0 ? "disabled" : "")>
+                                            <i class="bi bi-dash-lg"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="Adjust" asp-route-id="@item.Id" method="post" class="d-inline m-0">
+                                        <input type="hidden" name="delta" value="1" />
+                                        <input type="hidden" name="returnFlag" value="@flag" />
+                                        <button type="submit" class="icon-btn" aria-label="Increase @item.Name by one" title="Increase by one">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
+                                    </form>
+
+                                    <div class="dropdown">
+                                        <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for @item.Name">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" asp-action="Details" asp-route-id="@item.Id">
+                                                    <i class="bi bi-info-circle"></i> View details
+                                                </a>
+                                            </li>
+                                            @if (isAdmin) {
+                                                <li>
+                                                    <a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">
+                                                        <i class="bi bi-pencil"></i> Edit item
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider" /></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@item.Id">
+                                                        <i class="bi bi-trash"></i> Remove item
+                                                    </a>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else {
+    <div class="card-app">
+        <div class="empty-state">
+            <div class="empty-state__icon"><i class="bi bi-box-seam"></i></div>
+            @if (!string.IsNullOrWhiteSpace(search) || kind is not null || !string.IsNullOrWhiteSpace(flag)) {
+                <h2 class="empty-state__title">Nothing matches that</h2>
+                <p class="empty-state__text">Try a different search term, or clear the filters to see everything.</p>
+                <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-x-lg"></i> Clear filters</a>
+            }
+            else {
+                <h2 class="empty-state__title">Nothing in the inventory yet</h2>
+                <p class="empty-state__text">
+                    Add your machines and benches as equipment to track condition and service dates, and your
+                    towels, supplements and cleaning supplies as stock to get low-stock warnings.
+                </p>
+                @if (isAdmin) {
+                    <a class="btn-app btn-app--primary" asp-action="Create"><i class="bi bi-plus-lg"></i> Add Item</a>
+                }
+            }
+        </div>
+    </div>
+}

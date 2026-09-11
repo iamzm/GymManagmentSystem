@@ -1,4 +1,6 @@
 ﻿using Shared.DTOs.BookingDTOs;
+using Shared.DTOs.ExpenseDTOs;
+using Shared.DTOs.InventoryDTOs;
 using Shared.DTOs.MembershipDTOs;
 
 namespace Shared.DTOs.AnalyticsDTOs {
@@ -15,6 +17,16 @@ namespace Shared.DTOs.AnalyticsDTOs {
         public List<MembershipDTO> ExpiringMemberships { get; set; } = [];
         public List<ScheduleSlotDTO> NextSessions { get; set; } = [];
         public List<RecentMemberDTO> RecentMembers { get; set; } = [];
+
+        /// <summary>Revenue Against Spend For The Last Few Months — The Owner's Bottom Line.</summary>
+        public List<ProfitPointDTO> ProfitTrend { get; set; } = [];
+
+        /// <summary>Stock To Reorder And Equipment Overdue For Service.</summary>
+        public List<InventoryItemDTO> LowStock { get; set; } = [];
+        public List<InventoryItemDTO> ServiceDue { get; set; } = [];
+
+        /// <summary>Gross Monthly Pay For Staff Still Employed.</summary>
+        public decimal MonthlyPayroll { get; set; }
     }
 
     public class PlanBreakdownDTO {

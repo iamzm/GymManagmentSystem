@@ -70,6 +70,7 @@
         initCharts();
         initTables();
         initPendingForms();
+        initItemKind();
     });
 
     /* --- Photo upload preview --------------------------------------------- */
@@ -376,5 +377,27 @@
                 }, 0);
             });
         });
+    }
+    /* --- Inventory item kind ---------------------------------------------
+       Equipment and stock share a form but not their fields. Only the block
+       belonging to the chosen kind is shown; both stay in the DOM so a server-side
+       validation message on a hidden field is still there when its block returns. */
+    function initItemKind() {
+        var select = document.querySelector('[data-item-kind]');
+        if (!select) return;
+
+        var blocks = document.querySelectorAll('[data-kind-block]');
+        if (!blocks.length) return;
+
+        function apply() {
+            // Equipment is 1 and Consumable is 2 in the ItemKind enum.
+            var wanted = select.value === '2' ? 'consumable' : 'equipment';
+            blocks.forEach(function (block) {
+                block.hidden = block.getAttribute('data-kind-block') !== wanted;
+            });
+        }
+
+        select.addEventListener('change', apply);
+        apply();
     }
 })();

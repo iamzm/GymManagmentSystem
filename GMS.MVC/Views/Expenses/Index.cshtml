@@ -1,0 +1,191 @@
+@model IEnumerable<ExpenseDTO>
+@{
+    ViewData["Title"] = "Expenses";
+    ViewData["Crumb"] = "Money going out";
+    var search = ViewBag.Search as string;
+    var category = ViewBag.Category as int?;
+    var period = ViewBag.Period as string;
+    var summary = ViewBag.Summary as ExpenseSummaryDTO ?? new ExpenseSummaryDTO();
+    var expenses = Model?.ToList() ?? [];
+
+    string ChipClass(string? value) => period == value || (string.IsNullOrEmpty(period) && value is null)
+        ? "chip is-active" : "chip";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations</div>
+        <h1 class="page-head__title">Expenses</h1>
+        <p class="page-head__sub">@summary.EntryCount entr@(summary.EntryCount == 1 ? "y" : "ies") · @Money.Format(summary.TotalSpent) total</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="ProfitAndLoss"><i class="bi bi-graph-up-arrow"></i> Profit &amp; Loss</a>
+        <a class="btn-app btn-app--primary" asp-action="Create"><i class="bi bi-plus-lg"></i> Record Expense</a>
+    </div>
+</div>
+
+<div class="stat-grid mb-4">
+    <div class="stat-tile tile--danger">
+        <div class="stat-tile__icon"><i class="bi bi-calendar-month"></i></div>
+        <div class="stat-tile__value">@Money.Amount(summary.SpentThisMonth)</div>
+        <div class="stat-tile__label">Spent this month</div>
+        @if (summary.MonthOnMonthPercent is int change) {
+            <div class="stat-tile__meta">
+                <i class="bi bi-arrow-@(change >= 0 ? "up" : "down")-right"></i>
+                @Math.Abs(change)% @(change >= 0 ? "more" : "less") than last month
+            </div>
+        }
+        else {
+            <div class="stat-tile__meta"><i class="bi bi-dash"></i> No spend last month to compare</div>
+        }
+    </div>
+    <div class="stat-tile tile--warn">
+        <div class="stat-tile__icon"><i class="bi bi-calendar-minus"></i></div>
+        <div class="stat-tile__value">@Money.Amount(summary.SpentLastMonth)</div>
+        <div class="stat-tile__label">Spent last month</div>
+    </div>
+    <div class="stat-tile tile--brand">
+        <div class="stat-tile__icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="stat-tile__value">@Money.Amount(summary.TotalSpent)</div>
+        <div class="stat-tile__label">Total in view</div>
+        <div class="stat-tile__meta"><i class="bi bi-funnel"></i> Follows the filters below</div>
+    </div>
+    <div class="stat-tile tile--info">
+        <div class="stat-tile__icon"><i class="bi bi-pie-chart"></i></div>
+        <div class="stat-tile__value">@(summary.ByCategory.FirstOrDefault()?.Percent ?? 0)%</div>
+        <div class="stat-tile__label">Largest category</div>
+        <div class="stat-tile__meta"><i class="bi bi-dot"></i> @(summary.ByCategory.FirstOrDefault()?.Category ?? "Nothing recorded")</div>
+    </div>
+</div>
+
+<form class="toolbar" method="get" asp-action="Index" data-search-form>
+    <div class="search-field">
+        <i class="bi bi-search"></i>
+        <input type="search" name="search" value="@search" placeholder="Search by title, vendor or reference…" aria-label="Search expenses" />
+    </div>
+
+    <input type="hidden" name="period" value="@period" />
+
+    <select name="category" class="input-app" style="max-width:250px" onchange="this.form.submit()" aria-label="Filter by category">
+        <option value="">All categories</option>
+        @foreach (var item in Html.GetEnumSelectList<ExpenseCategory>()) {
+            <option value="@item.Value" selected="@(category?.ToString() == item.Value)">@item.Text</option>
+        }
+    </select>
+
+    <div class="filter-chips">
+        <a class="@ChipClass(null)" asp-action="Index" asp-route-search="@search" asp-route-category="@category">All time</a>
+        <a class="@ChipClass("month")" asp-action="Index" asp-route-search="@search" asp-route-category="@category" asp-route-period="month">This month</a>
+        <a class="@ChipClass("last")" asp-action="Index" asp-route-search="@search" asp-route-category="@category" asp-route-period="last">Last month</a>
+        <a class="@ChipClass("year")" asp-action="Index" asp-route-search="@search" asp-route-category="@category" asp-route-period="year">This year</a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(search) || category is not null || !string.IsNullOrWhiteSpace(period)) {
+        <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-action="Index"><i class="bi bi-x-lg"></i> Clear</a>
+    }
+</form>
+
+@if (expenses.Count > 0) {
+    <div class="row g-4">
+        <div class="col-12 col-xl-8">
+            <div class="table-app-wrap">
+                <div class="table-app-scroll">
+                    <table class="table-app">
+                        <thead>
+                            <tr>
+                                <th>Expense</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Paid By</th>
+                                <th>Date</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var expense in expenses) {
+                                <tr>
+                                    <td>
+                                        <div class="min-width-0">
+                                            <div class="identity__name">@expense.Title</div>
+                                            <div class="identity__meta">
+                                                @if (!string.IsNullOrWhiteSpace(expense.Vendor)) {
+                                                    <i class="bi bi-shop"></i> @expense.Vendor
+                                                }
+                                                else {
+                                                    <text>#@expense.Id</text>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="pill pill--brand">@expense.Category</span></td>
+                                    <td class="mono-num fw-600">@Money.Format(expense.Amount)</td>
+                                    <td class="text-muted-2 fs-14">@expense.PaymentMethod</td>
+                                    <td class="mono-num fs-14">@expense.SpentOn.ToString("MMM dd, yyyy")</td>
+                                    <td class="col-actions">
+                                        <div class="dropdown">
+                                            <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for @expense.Title">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <a class="dropdown-item" asp-action="Edit" asp-route-id="@expense.Id">
+                                                        <i class="bi bi-pencil"></i> Edit expense
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider" /></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@expense.Id">
+                                                        <i class="bi bi-trash"></i> Remove expense
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card-app">
+                <div class="card-app__head"><h2 class="card-app__title"><i class="bi bi-pie-chart"></i> Where it went</h2></div>
+                <div class="card-app__body">
+                    @foreach (var row in summary.ByCategory) {
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                                <span class="fs-14 fw-600">@row.Category</span>
+                                <span class="mono-num fs-13 text-muted-2">@Money.Format(row.Amount) · @row.Percent%</span>
+                            </div>
+                            <div class="meter">
+                                <div class="meter__fill" style="width:@(Math.Max(row.Percent, 2))%"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else {
+    <div class="card-app">
+        <div class="empty-state">
+            <div class="empty-state__icon"><i class="bi bi-receipt"></i></div>
+            @if (!string.IsNullOrWhiteSpace(search) || category is not null || !string.IsNullOrWhiteSpace(period)) {
+                <h2 class="empty-state__title">No expenses match that</h2>
+                <p class="empty-state__text">Try a different search term, or clear the filters to see everything.</p>
+                <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-x-lg"></i> Clear filters</a>
+            }
+            else {
+                <h2 class="empty-state__title">No expenses recorded yet</h2>
+                <p class="empty-state__text">
+                    Record rent, salaries, utilities and equipment purchases here. Once there are a couple of
+                    months of entries, the Profit &amp; Loss view will show what the gym actually keeps.
+                </p>
+                <a class="btn-app btn-app--primary" asp-action="Create"><i class="bi bi-plus-lg"></i> Record Expense</a>
+            }
+        </div>
+    </div>
+}

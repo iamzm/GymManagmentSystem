@@ -1,0 +1,176 @@
+@model IEnumerable<EmployeeDTO>
+@{
+    ViewData["Title"] = "Employees";
+    ViewData["Crumb"] = "Staff on the payroll";
+    var search = ViewBag.Search as string;
+    var jobTitle = ViewBag.JobTitle as int?;
+    var status = ViewBag.Status as string;
+    var payroll = (decimal)(ViewBag.MonthlyPayroll ?? 0m);
+    var employees = Model?.ToList() ?? [];
+    var activeCount = employees.Count(E => E.IsActive);
+
+    string ChipClass(string? value) => status == value || (string.IsNullOrEmpty(status) && value is null)
+        ? "chip is-active" : "chip";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">People</div>
+        <h1 class="page-head__title">Employees</h1>
+        <p class="page-head__sub">
+            @employees.Count record@(employees.Count == 1 ? "" : "s") shown · @activeCount currently employed
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--primary" asp-action="Create">
+            <i class="bi bi-person-plus"></i> Add Employee
+        </a>
+    </div>
+</div>
+
+<div class="stat-grid mb-4">
+    <div class="stat-tile tile--brand">
+        <div class="stat-tile__icon"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-tile__value">@activeCount</div>
+        <div class="stat-tile__label">On the payroll</div>
+    </div>
+    <div class="stat-tile tile--warn">
+        <div class="stat-tile__icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="stat-tile__value">@Money.Amount(payroll)</div>
+        <div class="stat-tile__label">Monthly payroll</div>
+        <div class="stat-tile__meta"><i class="bi bi-info-circle"></i> Gross, active staff only</div>
+    </div>
+    <div class="stat-tile tile--info">
+        <div class="stat-tile__icon"><i class="bi bi-briefcase"></i></div>
+        <div class="stat-tile__value">@employees.Select(E => E.JobTitle).Distinct().Count()</div>
+        <div class="stat-tile__label">Roles covered</div>
+    </div>
+</div>
+
+<form class="toolbar" method="get" asp-action="Index" data-search-form>
+    <div class="search-field">
+        <i class="bi bi-search"></i>
+        <input type="search" name="search" value="@search" placeholder="Search by name, email, phone or role…" aria-label="Search employees" />
+    </div>
+
+    <input type="hidden" name="status" value="@status" />
+
+    <select name="jobTitle" class="input-app" style="max-width:250px" onchange="this.form.submit()" aria-label="Filter by job title">
+        <option value="">All job titles</option>
+        @foreach (var item in Html.GetEnumSelectList<JobTitle>()) {
+            <option value="@item.Value" selected="@(jobTitle?.ToString() == item.Value)">@item.Text</option>
+        }
+    </select>
+
+    <div class="filter-chips">
+        <a class="@ChipClass(null)" asp-action="Index" asp-route-search="@search" asp-route-jobTitle="@jobTitle">All</a>
+        <a class="@ChipClass("active")" asp-action="Index" asp-route-search="@search" asp-route-jobTitle="@jobTitle" asp-route-status="active">Employed</a>
+        <a class="@ChipClass("former")" asp-action="Index" asp-route-search="@search" asp-route-jobTitle="@jobTitle" asp-route-status="former">Former</a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(search) || jobTitle is not null || !string.IsNullOrWhiteSpace(status)) {
+        <a class="btn-app btn-app--ghost btn-app--sm ms-auto" asp-action="Index">
+            <i class="bi bi-x-lg"></i> Clear
+        </a>
+    }
+</form>
+
+@if (employees.Count > 0) {
+    <div class="table-app-wrap">
+        <div class="table-app-scroll">
+            <table class="table-app">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Contact</th>
+                        <th>Role</th>
+                        <th>Type</th>
+                        <th>Salary</th>
+                        <th>Status</th>
+                        <th>Hired</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in employees) {
+                        <tr>
+                            <td>
+                                <div class="identity">
+                                    <partial name="_Avatar" model="@(new AvatarModel { Name = employee.Name, Photo = employee.Photo, Folder = "employees" })" />
+                                    <div class="min-width-0">
+                                        <div class="identity__name">@employee.Name</div>
+                                        <div class="identity__meta">#@employee.Id</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fs-14">@employee.Email</div>
+                                <div class="identity__meta mono-num">@employee.Phone</div>
+                            </td>
+                            <td class="text-muted-2">@employee.JobTitle</td>
+                            <td class="text-muted-2">@employee.EmploymentType</td>
+                            <td class="mono-num fw-600">@Money.Format(employee.MonthlySalary)</td>
+                            <td>
+                                @if (employee.IsActive) {
+                                    <span class="pill pill--ok"><i class="bi bi-check-circle-fill"></i>Employed</span>
+                                }
+                                else {
+                                    <span class="pill pill--muted"><i class="bi bi-box-arrow-right"></i>Former</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="fs-14">@employee.HiredOn.ToString("MMM dd, yyyy")</div>
+                                <div class="identity__meta">@employee.YearsOfService yr@(employee.YearsOfService == 1 ? "" : "s")</div>
+                            </td>
+                            <td class="col-actions">
+                                <div class="dropdown">
+                                    <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for @employee.Name">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Details" asp-route-id="@employee.Id">
+                                                <i class="bi bi-person-lines-fill"></i> View profile
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Edit" asp-route-id="@employee.Id">
+                                                <i class="bi bi-pencil"></i> Edit details
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@employee.Id">
+                                                <i class="bi bi-trash"></i> Remove employee
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else {
+    <div class="card-app">
+        <div class="empty-state">
+            <div class="empty-state__icon"><i class="bi bi-person-badge"></i></div>
+            @if (!string.IsNullOrWhiteSpace(search) || jobTitle is not null || !string.IsNullOrWhiteSpace(status)) {
+                <h2 class="empty-state__title">No employees match that</h2>
+                <p class="empty-state__text">Try a different search term, or clear the filters to see everyone.</p>
+                <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-x-lg"></i> Clear filters</a>
+            }
+            else {
+                <h2 class="empty-state__title">No employees yet</h2>
+                <p class="empty-state__text">
+                    Add your reception, cleaning, maintenance and management staff here to track roles and payroll.
+                    Trainers live on their own page, because they are tied to classes and bookings.
+                </p>
+                <a class="btn-app btn-app--primary" asp-action="Create"><i class="bi bi-person-plus"></i> Add Employee</a>
+            }
+        </div>
+    </div>
+}

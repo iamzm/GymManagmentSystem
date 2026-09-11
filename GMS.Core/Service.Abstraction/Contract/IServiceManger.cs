@@ -7,5 +7,10 @@
         public ISessionService SessionService { get; }
         public IMembershipService MembershipService { get; }
         public IBookingService BookingService { get; }
+
+        // Operations — Staff, Stock And Spending.
+        public IEmployeeService EmployeeService { get; }
+        public IInventoryService InventoryService { get; }
+        public IExpenseService ExpenseService { get; }
     }
 }

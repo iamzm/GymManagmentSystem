@@ -205,6 +205,8 @@ a:hover { color: var(--brand-500); }
 .text-muted-2 { color: var(--text-muted) !important; }
 .text-subtle { color: var(--text-subtle) !important; }
 .text-brand { color: var(--brand-ink) !important; }
+.text-success-app { color: var(--ok-ink) !important; }
+.text-danger-app { color: var(--danger-ink) !important; }
 .fw-600 { font-weight: 600; }
 .fs-13 { font-size: 13px; }
 .fs-14 { font-size: 14px; }
@@ -948,6 +950,43 @@ a:hover { color: var(--brand-500); }
 
 /* Long values (an email, an address) need more than one grid track to stay readable. */
 .detail-item--wide { grid-column: span 2; }
+
+/* --- Profit & loss chart -------------------------------------------------
+   Two bars per month drawn against one shared ceiling, so revenue and spend are
+   directly comparable. Heights come from the view as percentages of that ceiling. */
+.pnl-chart { display: flex; gap: 10px; align-items: flex-end; height: 230px; }
+.pnl-chart__month { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; height: 100%; }
+.pnl-chart__bars { flex: 1; display: flex; gap: 4px; align-items: flex-end; justify-content: center; }
+
+.pnl-chart__bar {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 26px;
+    min-height: 4px;
+    border-radius: 6px 6px 3px 3px;
+    transition: opacity var(--fast) var(--ease);
+}
+
+.pnl-chart__bar:hover { opacity: .82; }
+.pnl-chart__bar--in { background: linear-gradient(180deg, var(--ok-600), var(--ok-ink)); }
+.pnl-chart__bar--out { background: linear-gradient(180deg, var(--danger-600), var(--danger-ink)); }
+
+.pnl-chart__label {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+}
+
+/* Quantity beside its reorder threshold, so "12 / 20 min" reads as one fact. */
+.stock-cell { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+
+/* The month still running is drawn hatched, so its short revenue bar reads as
+   incomplete rather than as a collapse in trade. */
+.pnl-chart__month--partial .pnl-chart__bar { opacity: .55; }
+.pnl-chart__month--partial .pnl-chart__label { font-style: italic; }
 
 /* --- Small-screen corrections ------------------------------------------
    Both of these were found by walking every element at 320/375/390/414 and

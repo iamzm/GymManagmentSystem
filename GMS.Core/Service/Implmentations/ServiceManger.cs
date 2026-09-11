@@ -11,6 +11,9 @@ namespace Services.Implmentations {
         private readonly Lazy<IPlanService> _planService = new(() => new PlanService(unitOfWork, mapper));
         private readonly Lazy<IMembershipService> _membershipService = new(() => new MembershipService(unitOfWork, mapper));
         private readonly Lazy<IBookingService> _bookingService = new(() => new BookingService(unitOfWork, mapper));
+        private readonly Lazy<IEmployeeService> _employeeService = new(() => new EmployeeService(unitOfWork, mapper));
+        private readonly Lazy<IInventoryService> _inventoryService = new(() => new InventoryService(unitOfWork, mapper));
+        private readonly Lazy<IExpenseService> _expenseService = new(() => new ExpenseService(unitOfWork, mapper));
 
         public ISessionService SessionService => _sessionService.Value;
         public IMemberService MemberService => _memberService.Value;
@@ -19,5 +22,8 @@ namespace Services.Implmentations {
         public IPlanService PlanService => _planService.Value;
         public IMembershipService MembershipService => _membershipService.Value;
         public IBookingService BookingService => _bookingService.Value;
+        public IEmployeeService EmployeeService => _employeeService.Value;
+        public IInventoryService InventoryService => _inventoryService.Value;
+        public IExpenseService ExpenseService => _expenseService.Value;
     }
 }

@@ -1,0 +1,154 @@
+@model IEnumerable<ProfitPointDTO>
+@{
+    ViewData["Title"] = "Profit & Loss";
+    ViewData["Crumb"] = "What the gym actually keeps";
+    var months = (int)(ViewBag.Months ?? 6);
+    var points = Model?.ToList() ?? [];
+
+    // The Running Month Is Excluded From The Headline: Its Rent And Salaries Are Already
+    // Booked Against A Fraction Of Its Sales, So Including It Reports A Loss That Is Really
+    // Just The Calendar. It Still Appears In The Chart And The Table, Marked As In Progress.
+    var settled = points.Where(P => !P.IsInProgress).ToList();
+    var running = points.FirstOrDefault(P => P.IsInProgress);
+    var totalRevenue = settled.Sum(P => P.Revenue);
+    var totalExpenses = settled.Sum(P => P.Expenses);
+    var totalNet = totalRevenue - totalExpenses;
+    // A Margin On No Revenue Is Undefined, Not Zero — Showing 0% Would Read As Breaking Even.
+    int? overallMargin = totalRevenue <= 0 ? null : (int)Math.Round(totalNet * 100m / totalRevenue);
+
+    // Both Bars In A Month Are Drawn Against The Same Ceiling, Otherwise Revenue And Spend
+    // Would Be Scaled Differently And The Comparison Would Be Meaningless.
+    var ceiling = points.Count == 0 ? 0m : Math.Max(points.Max(P => P.Revenue), points.Max(P => P.Expenses));
+    int Height(decimal value) => ceiling <= 0 ? 2 : (int)Math.Max(Math.Round(value * 100m / ceiling), 2);
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations · Expenses</div>
+        <h1 class="page-head__title">Profit &amp; Loss</h1>
+        <p class="page-head__sub">
+            Membership revenue against recorded spend, month by month.
+            @if (running is not null) {
+                <span>Totals cover the @settled.Count completed months; @running.Label is still running.</span>
+            }
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to expenses</a>
+    </div>
+</div>
+
+<form class="toolbar" method="get" asp-action="ProfitAndLoss">
+    <span class="fs-14 fw-600 text-muted-2">Showing</span>
+    <div class="filter-chips">
+        <a class="@(months == 3 ? "chip is-active" : "chip")" asp-action="ProfitAndLoss" asp-route-months="3">3 months</a>
+        <a class="@(months == 6 ? "chip is-active" : "chip")" asp-action="ProfitAndLoss" asp-route-months="6">6 months</a>
+        <a class="@(months == 12 ? "chip is-active" : "chip")" asp-action="ProfitAndLoss" asp-route-months="12">12 months</a>
+    </div>
+</form>
+
+<div class="stat-grid mb-4">
+    <div class="stat-tile tile--ok">
+        <div class="stat-tile__icon"><i class="bi bi-arrow-down-left-circle"></i></div>
+        <div class="stat-tile__value">@Money.Amount(totalRevenue)</div>
+        <div class="stat-tile__label">Revenue in</div>
+        <div class="stat-tile__meta"><i class="bi bi-info-circle"></i> <span>Memberships sold, completed months</span></div>
+    </div>
+    <div class="stat-tile tile--danger">
+        <div class="stat-tile__icon"><i class="bi bi-arrow-up-right-circle"></i></div>
+        <div class="stat-tile__value">@Money.Amount(totalExpenses)</div>
+        <div class="stat-tile__label">Expenses out</div>
+    </div>
+    <div class="stat-tile @(totalNet >= 0 ? "tile--accent" : "tile--danger")">
+        <div class="stat-tile__icon"><i class="bi bi-@(totalNet >= 0 ? "graph-up-arrow" : "graph-down-arrow")"></i></div>
+        <div class="stat-tile__value">@Money.Amount(totalNet)</div>
+        <div class="stat-tile__label">@(totalNet >= 0 ? "Net profit" : "Net loss")</div>
+        @* Built as one string: Razor parses bare text after a tag inside a code block as C#. *@
+        <div class="stat-tile__meta">
+            <i class="bi bi-@(overallMargin is null ? "dash" : "percent")"></i>
+            <span>@(overallMargin is int margin ? $"{margin}% margin" : "No revenue to measure against")</span>
+        </div>
+    </div>
+</div>
+
+@if (points.Any(P => P.Revenue > 0 || P.Expenses > 0)) {
+    <div class="card-app mb-4">
+        <div class="card-app__head">
+            <h2 class="card-app__title"><i class="bi bi-bar-chart"></i> Revenue vs expenses</h2>
+            <div class="d-flex gap-3 fs-13">
+                <span class="d-inline-flex align-items-center gap-1">
+                    <span style="width:10px;height:10px;border-radius:3px;background:var(--ok-600);display:inline-block"></span>
+                    Revenue
+                </span>
+                <span class="d-inline-flex align-items-center gap-1">
+                    <span style="width:10px;height:10px;border-radius:3px;background:var(--danger-600);display:inline-block"></span>
+                    Expenses
+                </span>
+            </div>
+        </div>
+        <div class="card-app__body">
+            <div class="pnl-chart">
+                @foreach (var point in points) {
+                    <div class="pnl-chart__month @(point.IsInProgress ? "pnl-chart__month--partial" : "")">
+                        <div class="pnl-chart__bars">
+                            <div class="pnl-chart__bar pnl-chart__bar--in" style="height:@Height(point.Revenue)%"
+                                 title="@point.Label revenue: @Money.Format(point.Revenue)"></div>
+                            <div class="pnl-chart__bar pnl-chart__bar--out" style="height:@Height(point.Expenses)%"
+                                 title="@point.Label expenses: @Money.Format(point.Expenses)"></div>
+                        </div>
+                        <div class="pnl-chart__label">@point.Label@(point.IsInProgress ? " ·" : "")</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<div class="table-app-wrap">
+    <div class="table-app-scroll">
+        <table class="table-app">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Revenue</th>
+                    <th>Expenses</th>
+                    <th>Net</th>
+                    <th>Margin</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var point in points.AsEnumerable().Reverse()) {
+                    <tr>
+                        <td class="fw-600">
+                            @point.Label @point.Year
+                            @if (point.IsInProgress) {
+                                <span class="pill pill--muted ms-1"><i class="bi bi-hourglass-split"></i><span>In progress</span></span>
+                            }
+                        </td>
+                        <td class="mono-num">@Money.Format(point.Revenue)</td>
+                        <td class="mono-num">@Money.Format(point.Expenses)</td>
+                        <td class="mono-num fw-600">
+                            <span class="@(point.IsProfit ? "text-success-app" : "text-danger-app")">@Money.Format(point.Net)</span>
+                        </td>
+                        <td>
+                            @if (point.MarginPercent is int monthMargin) {
+                                <span class="pill @(point.IsProfit ? "pill--ok" : "pill--danger")">
+                                    <i class="bi bi-@(point.IsProfit ? "arrow-up" : "arrow-down")"></i><span>@($"{monthMargin}%")</span>
+                                </span>
+                            }
+                            else {
+                                <span class="text-subtle">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p class="text-subtle fs-13 mt-3">
+    Revenue counts memberships by the date they were sold, the same basis the dashboard uses.
+    Expenses count by the date the money was spent. Neither figure is an accounting statement —
+    it is a working view of what came in against what went out.
+</p>

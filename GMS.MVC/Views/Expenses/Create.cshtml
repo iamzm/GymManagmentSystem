@@ -1,0 +1,39 @@
+@model CreateExpenseDTO
+@{
+    ViewData["Title"] = "Record Expense";
+    ViewData["Crumb"] = "Add money going out";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations · Expenses</div>
+        <h1 class="page-head__title">Record an expense</h1>
+        <p class="page-head__sub">Everything recorded here nets against membership revenue in Profit &amp; Loss.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
+                <form asp-action="CreateExpense" method="post" novalidate>
+                    <partial name="_ExpenseFields" model="Model" />
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" data-pending-label="Recording…" class="btn-app btn-app--primary">
+                            <i class="bi bi-check2"></i> Record Expense
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,41 @@
+@model InventoryItemToUpdateDTO
+@{
+    ViewData["Title"] = "Edit Item";
+    ViewData["Crumb"] = "Update an inventory item";
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">Operations · Inventory</div>
+        <h1 class="page-head__title">Edit @Model.Name</h1>
+        <p class="page-head__sub">Changing the kind clears the fields that no longer apply.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
+
+                <form asp-action="EditItem" asp-route-id="@Model.Id" method="post" novalidate>
+                    <partial name="_InventoryFields" model="@((CreateInventoryItemDTO)Model)" />
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" data-pending-label="Saving changes…" class="btn-app btn-app--primary">
+                            <i class="bi bi-check2"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -23,5 +23,10 @@ namespace Presistence.Data {
         public DbSet<Session> Sessions { get; set; }
         public DbSet<MemberShip> MemberShips { get; set; }
         public DbSet<MemberSession> MemberSessions { get; set; }
+
+        // Operations — What The Gym Owns, Spends And Pays For.
+        public DbSet<Employee> Employees { get; set; }
+        public DbSet<InventoryItem> InventoryItems { get; set; }
+        public DbSet<Expense> Expenses { get; set; }
     }
 }

@@ -3,5 +3,6 @@
     public static class UploadFolders {
         public const string Members = "members";
         public const string Trainers = "trainers";
+        public const string Employees = "employees";
     }
 }

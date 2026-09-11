@@ -1,0 +1,139 @@
+@model EmployeeToUpdateDTO
+@{
+    ViewData["Title"] = "Edit Employee";
+    ViewData["Crumb"] = "Update a staff record";
+    var employeeId = (int)ViewBag.EmployeeId;
+}
+
+<div class="page-head">
+    <div>
+        <div class="page-head__eyebrow">People · Employees</div>
+        <h1 class="page-head__title">Edit @Model.Name</h1>
+        <p class="page-head__sub">Contact details, role and pay. Date of birth and gender are set when the record is created.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn-app btn-app--ghost" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <div class="card-app form-app">
+            <div class="card-app__body">
+                <partial name="_ValidationSummary" />
+
+                <form asp-action="EditEmployee" asp-route-id="@employeeId" method="post" enctype="multipart/form-data" novalidate>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-person-circle"></i> Profile photo</div>
+                        <div class="upload-photo">
+                            <div class="upload-photo__preview" id="photoPreview">
+                                @if (!string.IsNullOrWhiteSpace(Model.Photo)) {
+                                    <img src="~/uploads/employees/@Model.Photo" alt="Current photo of @Model.Name" />
+                                } else {
+                                    <i class="bi bi-camera"></i>
+                                }
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" name="photoFile" class="form-control" accept="image/png,image/jpeg,image/webp"
+                                       data-photo-input="#photoPreview" aria-label="Profile photo" />
+                                <div class="field-hint">Leave empty to keep the current photo. JPG, PNG or WEBP up to 2 MB.</div>
+                                <span class="field-error">@Html.ValidationMessage("photoFile")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-person-vcard"></i> Personal information</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Name">Full Name</label>
+                                <input asp-for="Name" class="form-control" readonly />
+                                <div class="field-hint">Names are set when the record is created.</div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Email">Email <span class="req">*</span></label>
+                                <input asp-for="Email" class="form-control" placeholder="nadia@powerfitness.com" />
+                                <span asp-validation-for="Email"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="Phone">Phone <span class="req">*</span></label>
+                                <input asp-for="Phone" class="form-control" placeholder="03001234567" />
+                                <div class="field-hint">Pakistani mobile number, 11 digits starting 03.</div>
+                                <span asp-validation-for="Phone"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-briefcase"></i> Employment</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label asp-for="JobTitle">Job Title <span class="req">*</span></label>
+                                <select asp-for="JobTitle" asp-items="Html.GetEnumSelectList<JobTitle>()" class="form-select">
+                                    <option value="">Select a role</option>
+                                </select>
+                                <span asp-validation-for="JobTitle"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="EmploymentType">Employment Type <span class="req">*</span></label>
+                                <select asp-for="EmploymentType" asp-items="Html.GetEnumSelectList<EmploymentType>()" class="form-select">
+                                    <option value="">Select a type</option>
+                                </select>
+                                <span asp-validation-for="EmploymentType"></span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="MonthlySalary">Monthly Salary (@Money.Code)</label>
+                                <input asp-for="MonthlySalary" type="number" step="1" min="0" class="form-control" placeholder="45000" />
+                                <div class="field-hint">Gross monthly pay. Feeds the payroll total on the staff list.</div>
+                                <span asp-validation-for="MonthlySalary"></span>
+                            </div>
+                            <div class="col-12 col-md-6 d-flex align-items-center">
+                                <div class="form-check mt-3">
+                                    <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActive" />
+                                    <label class="form-check-label" for="isActive">Currently employed</label>
+                                    <div class="field-hint">
+                                        Clear this when someone leaves. The record stays for the expense history,
+                                        and their salary drops out of the payroll total.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section__title"><i class="bi bi-geo-alt"></i> Address</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label asp-for="BuildingNumber">Building Number <span class="req">*</span></label>
+                                <input asp-for="BuildingNumber" type="number" min="1" class="form-control" placeholder="11" />
+                                <span asp-validation-for="BuildingNumber"></span>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label asp-for="Street">Street <span class="req">*</span></label>
+                                <input asp-for="Street" class="form-control" placeholder="G 11 3" />
+                                <span asp-validation-for="Street"></span>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label asp-for="City">City <span class="req">*</span></label>
+                                <input asp-for="City" class="form-control" placeholder="Islamabad" />
+                                <span asp-validation-for="City"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                        <button type="submit" data-pending-label="Saving changes…" class="btn-app btn-app--primary">
+                            <i class="bi bi-check2"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

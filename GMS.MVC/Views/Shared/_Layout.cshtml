@@ -81,6 +81,11 @@
                     <a class="@NavClass("Trainers")" asp-controller="Trainers" asp-action="Index">
                         <i class="bi bi-person-badge"></i><span>Trainers</span>
                     </a>
+                    @if (isAdmin) {
+                        <a class="@NavClass("Employees")" asp-controller="Employees" asp-action="Index">
+                            <i class="bi bi-person-badge"></i><span>Employees</span>
+                        </a>
+                    }
 
                     <div class="sidebar__section">Operations</div>
                     <a class="@NavClass("Session")" asp-controller="Session" asp-action="Index">
@@ -89,6 +94,14 @@
                     <a class="@NavClass("Memberships")" asp-controller="Memberships" asp-action="Index">
                         <i class="bi bi-card-checklist"></i><span>Memberships</span>
                     </a>
+                    <a class="@NavClass("Inventory")" asp-controller="Inventory" asp-action="Index">
+                        <i class="bi bi-box-seam"></i><span>Inventory</span>
+                    </a>
+                    @if (isAdmin) {
+                        <a class="@NavClass("Expenses")" asp-controller="Expenses" asp-action="Index">
+                            <i class="bi bi-receipt"></i><span>Expenses</span>
+                        </a>
+                    }
                 }
 
                 <div class="sidebar__section">Catalogue</div>
@@ -153,6 +166,10 @@
                                 <li><a class="dropdown-item" asp-controller="Session" asp-action="Create"><i class="bi bi-calendar-plus"></i> Session</a></li>
                                 <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" asp-controller="Memberships" asp-action="Create"><i class="bi bi-card-checklist"></i> Membership</a></li>
+                                <li><hr class="dropdown-divider" /></li>
+                                <li><a class="dropdown-item" asp-controller="Employees" asp-action="Create"><i class="bi bi-person-badge"></i> Employee</a></li>
+                                <li><a class="dropdown-item" asp-controller="Inventory" asp-action="Create"><i class="bi bi-box-seam"></i> Inventory item</a></li>
+                                <li><a class="dropdown-item" asp-controller="Expenses" asp-action="Create"><i class="bi bi-receipt"></i> Expense</a></li>
                             </ul>
                         </div>
                     }

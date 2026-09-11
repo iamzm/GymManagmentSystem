@@ -41,7 +41,11 @@ namespace Presistence.Data {
             await SeedRolesAsync();
             await SeedAdminAsync();
 
-            if (_seedOptions.SeedDemoData) await SeedDemoDataAsync();
+            if (_seedOptions.SeedDemoData) {
+                await SeedDemoDataAsync();
+                await SeedMemberCohortAsync();
+                await SeedOperationsDemoDataAsync();
+            }
         }
 
         #region ==== Reference Data ====
@@ -188,6 +192,12 @@ namespace Presistence.Data {
             // Safe Only Now That Every Membership And Session Referencing Them Is Gone.
             _dbContext.Plans.RemoveRange(_dbContext.Plans);
             _dbContext.Categories.RemoveRange(_dbContext.Categories);
+
+            // The Operations Tables Stand Alone — No Foreign Keys Into The People Above — But They
+            // Are Demo Data Too, So A Reset That Left Them Behind Would Reload Duplicates.
+            _dbContext.Employees.RemoveRange(_dbContext.Employees);
+            _dbContext.InventoryItems.RemoveRange(_dbContext.InventoryItems);
+            _dbContext.Expenses.RemoveRange(_dbContext.Expenses);
             await _dbContext.SaveChangesAsync();
 
             // Those Member Rows Are Gone, So Any Account Pointing At One Is Now Pointing At Nothing.
@@ -272,6 +282,283 @@ namespace Presistence.Data {
 
             await SeedDemoLoginsAsync(members[0], trainers[0]);
         }
+
+        /// <summary>
+        /// A Membership Base Of Realistic Size, With Its Trading History.
+        ///
+        /// The Six Named Members Above Exist To Show The People Screens. They Are Not A Gym: Six
+        /// Subscriptions Cannot Carry Six Staff And A Rent Bill, So Before This The Profit And
+        /// Loss View Reported A -9,000% Margin And Read As Broken Rather Than As Bad News. This
+        /// Adds The Rest Of The Roll And Their Renewals Across The Last Six Months, So Revenue And
+        /// Costs Describe One Coherent Gym.
+        ///
+        /// Guarded On Its Own Count Rather Than On SeedDemoDataAsync's, So It Still Fills An
+        /// Existing Database That Already Has The Six.
+        /// </summary>
+        private async Task SeedMemberCohortAsync() {
+            const int target = 120;
+            var existing = await _dbContext.Members.CountAsync();
+            if (existing >= target) return;
+
+            var plans = await _dbContext.Plans.OrderBy(P => P.Price).ToListAsync();
+            if (plans.Count == 0) return;
+
+            string[] firstNames = [
+                "Adeel", "Aiman", "Amna", "Anum", "Arsalan", "Asad", "Ayesha", "Bilal", "Danish", "Faiza",
+                "Farhan", "Hamid", "Hareem", "Hassan", "Hiba", "Imran", "Iqra", "Junaid", "Kamran", "Kashif",
+                "Khadija", "Laiba", "Mahnoor", "Maryam", "Mehwish", "Moiz", "Nabeel", "Nimra", "Noman", "Rabia",
+                "Rehan", "Sadia", "Saad", "Sahar", "Salman", "Samra", "Shahzad", "Sobia", "Sohail", "Tahir",
+                "Talha", "Uzair", "Wajiha", "Waqas", "Yasir", "Zara", "Zeeshan", "Zoya", "Areeba", "Basit",
+            ];
+            string[] lastNames = [
+                "Ahmed", "Akhtar", "Ali", "Aslam", "Baig", "Butt", "Chaudhry", "Farooq", "Gill", "Hashmi",
+                "Hussain", "Iqbal", "Javed", "Khan", "Malik", "Mirza", "Mughal", "Nawaz", "Qureshi", "Rana",
+                "Rashid", "Saeed", "Shah", "Sheikh", "Siddiqui", "Tariq", "Yousaf", "Zafar",
+            ];
+            (string Street, string City)[] places = [
+                ("DHA Phase 5", "Lahore"), ("Gulberg III", "Lahore"), ("Model Town", "Lahore"),
+                ("Clifton Block 5", "Karachi"), ("Gulshan e Iqbal", "Karachi"), ("North Nazimabad", "Karachi"),
+                ("F 7 Markaz", "Islamabad"), ("G 11 Markaz", "Islamabad"), ("I 8 Markaz", "Islamabad"),
+                ("Bahria Town", "Rawalpindi"), ("Saddar", "Rawalpindi"),
+            ];
+            BloodType[] bloodTypes = [BloodType.OPositive, BloodType.APositive, BloodType.BPositive,
+                                      BloodType.ABPositive, BloodType.ONegative, BloodType.ANegative];
+
+            // Fixed Seed: The Sample Data Must Look The Same On Every Machine, Or Two People
+            // Comparing Screens Would See Different Numbers And Suspect A Bug.
+            var random = new Random(20260911);
+            var today = DateTime.Now.Date;
+            var windowStart = today.AddMonths(-6);
+
+            var taken = (await _dbContext.Members.Select(M => M.Email).ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var members = new List<Member>();
+
+            for (var i = existing; i < target; i++) {
+                var first = firstNames[random.Next(firstNames.Length)];
+                var last = lastNames[random.Next(lastNames.Length)];
+                var email = $"{first.ToLowerInvariant()}.{last.ToLowerInvariant()}{i}@example.com";
+                if (!taken.Add(email)) continue;
+
+                var place = places[random.Next(places.Length)];
+                var female = "Ayesha Amna Anum Faiza Hareem Hiba Iqra Khadija Laiba Mahnoor Maryam Mehwish Nimra Rabia Sadia Sahar Samra Sobia Wajiha Zara Zoya Aiman Areeba".Contains(first);
+
+                members.Add(NewMember(
+                    $"{first} {last}", email,
+                    // 0321 Plus A Zero-Padded Counter Keeps Every Number Unique And 11 Digits Long.
+                    $"0321{(4_000_000 + i):D7}",
+                    female ? Gender.Female : Gender.Male,
+                    1985 + random.Next(20),
+                    155 + random.Next(35),
+                    50 + random.Next(45),
+                    bloodTypes[random.Next(bloodTypes.Length)],
+                    place.Street, place.City));
+            }
+
+            if (members.Count == 0) return;
+            _dbContext.Members.AddRange(members);
+            await _dbContext.SaveChangesAsync();
+
+            // Each Member Joins At Some Point In The Window And Then Renews On Their Plan's Own
+            // Cycle Up To Today. That Is What Puts Revenue In Every Month Instead Of One Spike,
+            // And It Is How A Real Roll Behaves.
+            var memberships = new List<MemberShip>();
+            foreach (var member in members) {
+                var plan = plans[random.Next(plans.Count)];
+                var joined = windowStart.AddDays(random.Next(0, 170));
+
+                for (var start = joined; start <= today; start = start.AddDays(plan.DurationDays)) {
+                    memberships.Add(new MemberShip {
+                        MemberId = member.Id,
+                        PlanId = plan.Id,
+                        CreatedAt = DateOnly.FromDateTime(start),
+                        EndDate = start.AddDays(plan.DurationDays),
+                        PricePaid = plan.Price,
+                    });
+                }
+            }
+
+            _dbContext.MemberShips.AddRange(memberships);
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Seeded {Members} additional demo members and {Contracts} membership contracts.",
+                                   members.Count, memberships.Count);
+        }
+
+        /// <summary>
+        /// Sample Staff, Stock And Spending So The Operations Screens And The Profit And Loss
+        /// View Have Something To Show On A Fresh Clone. Guarded Independently Of The People
+        /// Seeder Above, So Adding These Modules To An Existing Database Still Fills Them.
+        /// </summary>
+        private async Task SeedOperationsDemoDataAsync() {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            if (!await _dbContext.Employees.AnyAsync()) {
+                _dbContext.Employees.AddRange(
+                    NewEmployee("Nadia Hussain", "nadia.hussain@powerfitness.pk", "03451234701", Gender.Female,
+                                JobTitle.Receptionist, EmploymentType.FullTime, 35_000m, 1996, 14, "G 11 3", "Islamabad", monthsAgo: 26),
+                    NewEmployee("Imran Qureshi", "imran.qureshi@powerfitness.pk", "03451234702", Gender.Male,
+                                JobTitle.Manager, EmploymentType.FullTime, 75_000m, 1985, 7, "F 7 Markaz", "Islamabad", monthsAgo: 41),
+                    NewEmployee("Rashid Mehmood", "rashid.mehmood@powerfitness.pk", "03451234703", Gender.Male,
+                                JobTitle.Maintenance, EmploymentType.FullTime, 28_000m, 1990, 22, "Bahria Town", "Rawalpindi", monthsAgo: 17),
+                    NewEmployee("Shazia Bibi", "shazia.bibi@powerfitness.pk", "03451234704", Gender.Female,
+                                JobTitle.Cleaner, EmploymentType.PartTime, 18_000m, 1993, 5, "Saddar", "Rawalpindi", monthsAgo: 11),
+                    NewEmployee("Tariq Jameel", "tariq.jameel@powerfitness.pk", "03451234705", Gender.Male,
+                                JobTitle.Security, EmploymentType.FullTime, 25_000m, 1987, 31, "G 9 Markaz", "Islamabad", monthsAgo: 33),
+                    NewEmployee("Kiran Shah", "kiran.shah@powerfitness.pk", "03451234706", Gender.Female,
+                                JobTitle.Sales, EmploymentType.Contract, 32_000m, 1998, 9, "Blue Area", "Islamabad", monthsAgo: 6),
+                    // One Former Employee, So The Status Filter And The Payroll Exclusion Both Have
+                    // Something Real To Act On Rather Than Reading As Dead Options.
+                    NewEmployee("Faisal Abbas", "faisal.abbas@powerfitness.pk", "03451234707", Gender.Male,
+                                JobTitle.FloorSupervisor, EmploymentType.FullTime, 40_000m, 1991, 3, "I 8 Markaz", "Islamabad",
+                                monthsAgo: 29, isActive: false)
+                );
+            }
+
+            if (!await _dbContext.InventoryItems.AnyAsync()) {
+                _dbContext.InventoryItems.AddRange(
+                    // Equipment — A Spread Of Conditions And Service Dates, Including One Overdue.
+                    NewEquipment("Commercial Treadmill", "Life Fitness T5, 4 units on the cardio floor", 4, 425_000m,
+                                 "Fitness World, Rawalpindi", "Cardio floor", ItemCondition.Good, serviceInDays: 24, boughtMonthsAgo: 19),
+                    NewEquipment("Elliptical Cross Trainer", "Front-drive, self-powered", 3, 285_000m,
+                                 "Fitness World, Rawalpindi", "Cardio floor", ItemCondition.Good, serviceInDays: 55, boughtMonthsAgo: 19),
+                    NewEquipment("Olympic Barbell 20kg", "Knurled, 200kg rated", 8, 32_000m,
+                                 "Iron Grip, Lahore", "Free weights", ItemCondition.New, serviceInDays: null, boughtMonthsAgo: 4),
+                    NewEquipment("Rubber Bumper Plate Set", "5kg to 25kg pairs", 6, 78_000m,
+                                 "Iron Grip, Lahore", "Free weights", ItemCondition.Good, serviceInDays: null, boughtMonthsAgo: 4),
+                    NewEquipment("Adjustable Bench", "Flat, incline and decline", 6, 46_000m,
+                                 "Iron Grip, Lahore", "Free weights", ItemCondition.Good, serviceInDays: 71, boughtMonthsAgo: 14),
+                    NewEquipment("Cable Crossover Machine", "Dual stack, 90kg per side", 1, 520_000m,
+                                 "Fitness World, Rawalpindi", "Strength area", ItemCondition.NeedsService, serviceInDays: -9, boughtMonthsAgo: 28),
+                    NewEquipment("Spin Bike", "Belt drive, magnetic resistance", 10, 68_000m,
+                                 "Cycle Pro, Karachi", "Studio 1", ItemCondition.Good, serviceInDays: 12, boughtMonthsAgo: 9),
+                    NewEquipment("Rowing Machine", "Air resistance, performance monitor", 2, 195_000m,
+                                 "Fitness World, Rawalpindi", "Cardio floor", ItemCondition.OutOfService, serviceInDays: -3, boughtMonthsAgo: 33),
+
+                    // Consumables — Two Deliberately At Or Below Their Reorder Level.
+                    NewConsumable("Gym Towels", "White cotton, member issue", 64, 450m, "Textile Mart, Faisalabad", reorderLevel: 40),
+                    NewConsumable("Whey Protein 1kg", "Chocolate, retail counter", 9, 6_800m, "Nutrition Hub, Lahore", reorderLevel: 12),
+                    NewConsumable("Mineral Water 1.5L", "Cases of 12", 18, 1_100m, "Aqua Supplies, Islamabad", reorderLevel: 25),
+                    NewConsumable("Disinfectant Spray 5L", "Equipment wipe-down", 7, 2_400m, "CleanCo, Rawalpindi", reorderLevel: 4),
+                    NewConsumable("Chalk Blocks", "Box of 8", 14, 900m, "Iron Grip, Lahore", reorderLevel: 6),
+                    NewConsumable("Resistance Bands", "Assorted strengths", 22, 1_600m, "Cycle Pro, Karachi", reorderLevel: 10)
+                );
+            }
+
+            if (!await _dbContext.Expenses.AnyAsync()) {
+                var expenses = new List<Expense>();
+
+                // Six Months Of Running Costs. Recurring Lines Are Generated Rather Than Typed Out,
+                // So The Profit And Loss Chart Has A Real Shape Instead Of One Spike.
+                for (var back = 5; back >= 0; back--) {
+                    var month = new DateOnly(today.Year, today.Month, 1).AddMonths(-back);
+                    var label = new DateTime(month.Year, month.Month, 1).ToString("MMMM yyyy");
+
+                    expenses.Add(NewExpense($"Premises rent — {label}", ExpenseCategory.Rent, 150_000m,
+                                            month.AddDays(2), PaymentMethod.BankTransfer, "Gulberg Properties", $"RENT-{month:yyyyMM}"));
+                    expenses.Add(NewExpense($"Staff salaries — {label}", ExpenseCategory.Salaries, 213_000m,
+                                            month.AddDays(28) > today ? today : month.AddDays(28), PaymentMethod.BankTransfer, null, $"PAY-{month:yyyyMM}"));
+                    expenses.Add(NewExpense($"Electricity — {label}", ExpenseCategory.Utilities, 48_000m + back * 3_000m,
+                                            month.AddDays(11), PaymentMethod.Easypaisa, "IESCO", $"UTIL-{month:yyyyMM}"));
+                    expenses.Add(NewExpense($"Water and gas — {label}", ExpenseCategory.Utilities, 12_000m,
+                                            month.AddDays(12), PaymentMethod.JazzCash, "SNGPL", null));
+                    expenses.Add(NewExpense($"Cleaning supplies — {label}", ExpenseCategory.Supplies, 9_500m,
+                                            month.AddDays(6), PaymentMethod.Cash, "CleanCo, Rawalpindi", null));
+                }
+
+                // One-Off Purchases, Dated Into Particular Months So Not Every Month Looks Alike.
+                expenses.Add(NewExpense("Cable crossover repair", ExpenseCategory.Maintenance, 18_000m,
+                                        today.AddDays(-21), PaymentMethod.Cash, "Fitness World, Rawalpindi", "SRV-8821"));
+                expenses.Add(NewExpense("Olympic barbells and plates", ExpenseCategory.Equipment, 180_000m,
+                                        today.AddMonths(-4).AddDays(3), PaymentMethod.BankTransfer, "Iron Grip, Lahore", "INV-2026-0142"));
+                expenses.Add(NewExpense("Ramadan membership campaign", ExpenseCategory.Marketing, 45_000m,
+                                        today.AddMonths(-2).AddDays(8), PaymentMethod.Card, "Meta Ads", null));
+                expenses.Add(NewExpense("Instagram and billboard spots", ExpenseCategory.Marketing, 28_000m,
+                                        today.AddMonths(-1).AddDays(14), PaymentMethod.Card, "Adsell Media", null));
+                expenses.Add(NewExpense("Public liability insurance", ExpenseCategory.Insurance, 60_000m,
+                                        today.AddMonths(-3).AddDays(5), PaymentMethod.Cheque, "Jubilee Insurance", "POL-77213"));
+                expenses.Add(NewExpense("Trade licence renewal", ExpenseCategory.Taxes, 22_000m,
+                                        today.AddMonths(-5).AddDays(9), PaymentMethod.BankTransfer, "CDA", "LIC-2026"));
+                expenses.Add(NewExpense("Studio mirror replacement", ExpenseCategory.Maintenance, 35_000m,
+                                        today.AddMonths(-2).AddDays(19), PaymentMethod.Cash, "Glass House, Islamabad", null));
+
+                _dbContext.Expenses.AddRange(expenses);
+            }
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        #region Operations Demo Builders
+        private static Employee NewEmployee(string name, string email, string phone, Gender gender, JobTitle jobTitle,
+                                            EmploymentType employmentType, decimal salary, int birthYear, int buildingNumber,
+                                            string street, string city, int monthsAgo, bool isActive = true) {
+            var hired = DateOnly.FromDateTime(DateTime.Now).AddMonths(-monthsAgo);
+            return new Employee {
+                Name = name,
+                Email = email,
+                Phone = phone,
+                Gender = gender,
+                DateOfBirth = new DateOnly(birthYear, 5, 12),
+                JobTitle = jobTitle,
+                EmploymentType = employmentType,
+                MonthlySalary = salary,
+                IsActive = isActive,
+                Address = new Address { BuildingNumber = buildingNumber, Street = street, City = city },
+                CreatedAt = hired,
+                UpdatedAt = hired,
+            };
+        }
+
+        private static InventoryItem NewEquipment(string name, string description, int quantity, decimal unitCost,
+                                                  string supplier, string location, ItemCondition condition,
+                                                  int? serviceInDays, int boughtMonthsAgo) {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            return new InventoryItem {
+                Name = name,
+                Description = description,
+                Kind = ItemKind.Equipment,
+                Quantity = quantity,
+                UnitCost = unitCost,
+                Supplier = supplier,
+                Location = location,
+                Condition = condition,
+                // A Negative Number Of Days Is A Service That Has Already Slipped.
+                NextServiceOn = serviceInDays.HasValue ? today.AddDays(serviceInDays.Value) : null,
+                PurchasedOn = today.AddMonths(-boughtMonthsAgo),
+                CreatedAt = today,
+                UpdatedAt = today,
+            };
+        }
+
+        private static InventoryItem NewConsumable(string name, string description, int quantity, decimal unitCost,
+                                                   string supplier, int reorderLevel) {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            return new InventoryItem {
+                Name = name,
+                Description = description,
+                Kind = ItemKind.Consumable,
+                Quantity = quantity,
+                UnitCost = unitCost,
+                Supplier = supplier,
+                ReorderLevel = reorderLevel,
+                PurchasedOn = today.AddDays(-21),
+                CreatedAt = today,
+                UpdatedAt = today,
+            };
+        }
+
+        private static Expense NewExpense(string title, ExpenseCategory category, decimal amount, DateOnly spentOn,
+                                          PaymentMethod method, string? vendor, string? reference) => new() {
+            Title = title,
+            Category = category,
+            Amount = amount,
+            SpentOn = spentOn,
+            PaymentMethod = method,
+            Vendor = vendor,
+            Reference = reference,
+            CreatedAt = spentOn,
+            UpdatedAt = spentOn,
+        };
+        #endregion
 
         /// <summary>
         /// Gives One Demo Member And One Demo Trainer A Login, So A Fresh Clone Can Be Signed Into

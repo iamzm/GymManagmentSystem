@@ -349,3 +349,146 @@
         </div>
     </div>
 </div>
+
+@*
+    Operations. The profit panel is admin-only — a trainer can see how busy the gym is
+    without seeing what it earns or what the staff are paid. The stock and service
+    alerts are staff-wide, because acting on them is floor work.
+*@
+@if (User.IsInRole(AppRoles.Admin) && Model.ProfitTrend.Count > 0) {
+    var trend = Model.ProfitTrend;
+    var thisMonth = trend[^1];
+    // Both bars share one ceiling, or revenue and spend would be scaled differently
+    // and sitting them side by side would say nothing.
+    var ceiling = Math.Max(trend.Max(P => P.Revenue), trend.Max(P => P.Expenses));
+    int BarHeight(decimal value) => ceiling <= 0 ? 2 : (int)Math.Max(Math.Round(value * 100m / ceiling), 2);
+
+    <div class="row g-4 mt-1">
+        <div class="col-12 col-xl-8">
+            <div class="card-app h-100">
+                <div class="card-app__head">
+                    <div>
+                        <h2 class="card-app__title">Revenue vs expenses</h2>
+                        <p class="card-app__sub">The last six months, side by side</p>
+                    </div>
+                    <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="Expenses" asp-action="ProfitAndLoss">
+                        <i class="bi bi-graph-up-arrow"></i> Full report
+                    </a>
+                </div>
+                <div class="card-app__body">
+                    <div class="pnl-chart">
+                        @foreach (var point in trend) {
+                            <div class="pnl-chart__month">
+                                <div class="pnl-chart__bars">
+                                    <div class="pnl-chart__bar pnl-chart__bar--in" style="height:@BarHeight(point.Revenue)%"
+                                         title="@point.Label revenue: @Money.Format(point.Revenue)"></div>
+                                    <div class="pnl-chart__bar pnl-chart__bar--out" style="height:@BarHeight(point.Expenses)%"
+                                         title="@point.Label expenses: @Money.Format(point.Expenses)"></div>
+                                </div>
+                                <div class="pnl-chart__label">@point.Label</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card-app h-100">
+                <div class="card-app__head">
+                    <div>
+                        <h2 class="card-app__title">This month</h2>
+                        <p class="card-app__sub">@thisMonth.Label so far</p>
+                    </div>
+                </div>
+                <div class="card-app__body">
+                    <div class="stat-tile tile--ok mb-3">
+                        <div class="stat-tile__value">@Money.Amount(thisMonth.Revenue)</div>
+                        <div class="stat-tile__label">Revenue in</div>
+                    </div>
+                    <div class="stat-tile tile--danger mb-3">
+                        <div class="stat-tile__value">@Money.Amount(thisMonth.Expenses)</div>
+                        <div class="stat-tile__label">Expenses out</div>
+                    </div>
+                    <div class="stat-tile @(thisMonth.IsProfit ? "tile--accent" : "tile--danger")">
+                        <div class="stat-tile__value">@Money.Amount(thisMonth.Net)</div>
+                        <div class="stat-tile__label">@(thisMonth.IsProfit ? "Net profit" : "Net loss")</div>
+                        <div class="stat-tile__meta">
+                            <i class="bi bi-people"></i>
+                            <span>@Money.Format(Model.MonthlyPayroll) monthly payroll</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.LowStock.Count > 0 || Model.ServiceDue.Count > 0) {
+    <div class="row g-4 mt-1">
+        @if (Model.LowStock.Count > 0) {
+            <div class="col-12 col-lg-6">
+                <div class="card-app h-100">
+                    <div class="card-app__head">
+                        <div>
+                            <h2 class="card-app__title">Running low</h2>
+                            <p class="card-app__sub">Stock at or below its reorder level</p>
+                        </div>
+                        <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="Inventory" asp-action="Index" asp-route-flag="low">
+                            View all
+                        </a>
+                    </div>
+                    <div class="card-app__body">
+                        @foreach (var item in Model.LowStock) {
+                            <div class="d-flex align-items-center justify-content-between gap-3 py-2 border-bottom">
+                                <div class="min-width-0">
+                                    <div class="identity__name">@item.Name</div>
+                                    <div class="identity__meta">@(item.Supplier ?? "No supplier recorded")</div>
+                                </div>
+                                <span class="pill pill--danger">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    <span>@item.Quantity left</span>
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.ServiceDue.Count > 0) {
+            <div class="col-12 col-lg-6">
+                <div class="card-app h-100">
+                    <div class="card-app__head">
+                        <div>
+                            <h2 class="card-app__title">Service due</h2>
+                            <p class="card-app__sub">Equipment overdue or due within a fortnight</p>
+                        </div>
+                        <a class="btn-app btn-app--ghost btn-app--sm" asp-controller="Inventory" asp-action="Index" asp-route-flag="service">
+                            View all
+                        </a>
+                    </div>
+                    <div class="card-app__body">
+                        @foreach (var item in Model.ServiceDue) {
+                            <div class="d-flex align-items-center justify-content-between gap-3 py-2 border-bottom">
+                                <div class="min-width-0">
+                                    <div class="identity__name">@item.Name</div>
+                                    <div class="identity__meta">@(item.Location ?? "No location recorded")</div>
+                                </div>
+                                @if (item.IsServiceOverdue) {
+                                    <span class="pill pill--danger"><i class="bi bi-tools"></i><span>Overdue</span></span>
+                                }
+                                else {
+                                    <span class="pill pill--warn">
+                                        <i class="bi bi-tools"></i>
+                                        <span>@item.NextServiceOn!.Value.ToString("MMM dd")</span>
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

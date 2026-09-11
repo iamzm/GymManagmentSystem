@@ -108,6 +108,9 @@ namespace GMS.MVC {
                 M.AddProfile(new TrainerProfile());
                 M.AddProfile(new MembershipProfile());
                 M.AddProfile(new BookingProfile());
+                M.AddProfile(new EmployeeProfile());
+                M.AddProfile(new InventoryProfile());
+                M.AddProfile(new ExpenseProfile());
             });
 
             #endregion

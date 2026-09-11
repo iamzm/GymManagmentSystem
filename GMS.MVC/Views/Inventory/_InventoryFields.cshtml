@@ -1,0 +1,90 @@
+@model CreateInventoryItemDTO
+@*
+    Shared by Create and Edit so the two forms cannot drift apart. The kind-specific
+    blocks are shown and hidden by data-item-kind in site.js; they stay in the DOM so a
+    validation message on a hidden field is still reachable once its section reappears.
+*@
+
+<div class="form-section">
+    <div class="form-section__title"><i class="bi bi-tag"></i> What is it?</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-7">
+            <label asp-for="Name">Item Name <span class="req">*</span></label>
+            <input asp-for="Name" class="form-control" placeholder="Treadmill · Protein bars · Gym towels" />
+            <span asp-validation-for="Name"></span>
+        </div>
+        <div class="col-12 col-md-5">
+            <label asp-for="Kind">Kind <span class="req">*</span></label>
+            <select asp-for="Kind" asp-items="Html.GetEnumSelectList<ItemKind>()" class="form-select" data-item-kind></select>
+            <div class="field-hint">Equipment is an asset you service. Stock is consumed and reordered.</div>
+            <span asp-validation-for="Kind"></span>
+        </div>
+        <div class="col-12">
+            <label asp-for="Description">Description</label>
+            <input asp-for="Description" class="form-control" placeholder="Optional note — model, size, flavour" />
+            <span asp-validation-for="Description"></span>
+        </div>
+    </div>
+</div>
+
+<div class="form-section">
+    <div class="form-section__title"><i class="bi bi-123"></i> Quantity and cost</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-4">
+            <label asp-for="Quantity">Quantity <span class="req">*</span></label>
+            <input asp-for="Quantity" type="number" min="0" class="form-control" placeholder="4" />
+            <span asp-validation-for="Quantity"></span>
+        </div>
+        <div class="col-12 col-md-4">
+            <label asp-for="UnitCost">Unit Cost (@Money.Code)</label>
+            <input asp-for="UnitCost" type="number" step="1" min="0" class="form-control" placeholder="185000" />
+            <span asp-validation-for="UnitCost"></span>
+        </div>
+        <div class="col-12 col-md-4">
+            <label asp-for="PurchasedOn">Purchased On</label>
+            <input asp-for="PurchasedOn" type="date" class="form-control" />
+            <span asp-validation-for="PurchasedOn"></span>
+        </div>
+        <div class="col-12 col-md-6">
+            <label asp-for="Supplier">Supplier</label>
+            <input asp-for="Supplier" class="form-control" placeholder="Fitness World, Rawalpindi" />
+            <span asp-validation-for="Supplier"></span>
+        </div>
+    </div>
+</div>
+
+<div class="form-section" data-kind-block="equipment">
+    <div class="form-section__title"><i class="bi bi-bicycle"></i> Equipment details</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-4">
+            <label asp-for="Location">Location</label>
+            <input asp-for="Location" class="form-control" placeholder="Cardio floor" />
+            <span asp-validation-for="Location"></span>
+        </div>
+        <div class="col-12 col-md-4">
+            <label asp-for="Condition">Condition <span class="req">*</span></label>
+            <select asp-for="Condition" asp-items="Html.GetEnumSelectList<ItemCondition>()" class="form-select">
+                <option value="">Select condition</option>
+            </select>
+            <span asp-validation-for="Condition"></span>
+        </div>
+        <div class="col-12 col-md-4">
+            <label asp-for="NextServiceOn">Next Service Due</label>
+            <input asp-for="NextServiceOn" type="date" class="form-control" />
+            <div class="field-hint">Overdue items are flagged on the dashboard.</div>
+            <span asp-validation-for="NextServiceOn"></span>
+        </div>
+    </div>
+</div>
+
+<div class="form-section" data-kind-block="consumable">
+    <div class="form-section__title"><i class="bi bi-box-seam"></i> Stock control</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-5">
+            <label asp-for="ReorderLevel">Reorder Level <span class="req">*</span></label>
+            <input asp-for="ReorderLevel" type="number" min="0" class="form-control" placeholder="20" />
+            <div class="field-hint">When the count drops to this, the item is flagged as low stock.</div>
+            <span asp-validation-for="ReorderLevel"></span>
+        </div>
+    </div>
+</div>

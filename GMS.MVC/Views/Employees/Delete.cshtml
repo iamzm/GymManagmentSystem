@@ -1,0 +1,54 @@
+@model EmployeeDTO
+@{
+    ViewData["Title"] = "Remove Employee";
+    ViewData["Crumb"] = "Confirm removal";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card-app">
+            <div class="card-app__body text-center">
+                <div class="empty-state__icon" style="background:var(--danger-100);color:var(--danger-ink)">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+
+                <h1 class="h4 mt-3">Remove @Model.Name?</h1>
+                <p class="text-muted-2">
+                    This deletes the staff record for good, along with their salary from the payroll total.
+                    If they have simply left, edit the record and clear "Currently employed" instead — that
+                    keeps the history.
+                </p>
+
+                <div class="card-app mt-3 mb-4 text-start">
+                    <div class="card-app__body">
+                        <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-item__label">Role</div>
+                        <div class="detail-item__value">@Model.JobTitle</div>
+                    </div>
+                    <div class="detail-item detail-item--wide">
+                        <div class="detail-item__label">Email</div>
+                        <div class="detail-item__value">@Model.Email</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Monthly salary</div>
+                        <div class="detail-item__value mono-num">@Money.Format(Model.MonthlySalary)</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item__label">Hired on</div>
+                        <div class="detail-item__value">@Model.HiredOn.ToString("MMM dd, yyyy")</div>
+                    </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form asp-action="DeleteEmployee" asp-route-id="@Model.Id" method="post" class="d-flex gap-2 justify-content-center">
+                    <a class="btn-app btn-app--ghost" asp-action="Index">Cancel</a>
+                    <button type="submit" data-pending-label="Removing…" class="btn-app btn-app--danger-solid">
+                        <i class="bi bi-trash"></i> Remove Employee
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

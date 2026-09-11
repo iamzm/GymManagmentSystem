@@ -14,6 +14,18 @@ namespace GMS.MVC.Controllers {
                 return RedirectToAction("Index", "SessionsSchedule");
 
             var dashboard = await serviceManger.AnalyticsService.GetDashboardData();
+
+            // The Operations Panels Are Composed Here Rather Than Inside AnalyticsService, So The
+            // Profit Maths Lives In Exactly One Place — ExpenseService — Instead Of Being Repeated.
+            // Only An Admin Sees Money And Payroll; A Trainer Gets The Gym Numbers Without The Books.
+            if (User.IsInRole(AppRoles.Admin)) {
+                dashboard.ProfitTrend = [.. await serviceManger.ExpenseService.GetProfitTrend(6)];
+                dashboard.MonthlyPayroll = await serviceManger.EmployeeService.GetMonthlyPayroll();
+            }
+
+            dashboard.LowStock = [.. await serviceManger.InventoryService.GetLowStock(4)];
+            dashboard.ServiceDue = [.. await serviceManger.InventoryService.GetServiceDue(4)];
+
             return View(dashboard);
         }
     }
